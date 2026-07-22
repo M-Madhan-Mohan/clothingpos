@@ -1,0 +1,403 @@
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Inter,sans-serif;
+}
+
+.product-page{
+    background:#0b0d17;
+    min-height:100vh;
+    color:#fff;
+    padding:32px 36px;
+}
+
+/* ================= HEADER ================= */
+
+.page-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    margin-bottom:30px;
+}
+
+.header-left h1{
+    font-size:54px;
+    font-weight:800;
+    margin-bottom:10px;
+    line-height:1;
+}
+
+.header-left p{
+    color:#a7adc9;
+    font-size:15px;
+}
+
+.header-right{
+    display:flex;
+    gap:18px;
+}
+
+.date-box{
+    min-width:170px;
+    height:50px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    background:#171b2b;
+    border:1px solid #2b3045;
+    border-radius:14px;
+    color:white;
+    font-size:14px;
+}
+
+/* ================= TOOLBAR ================= */
+
+.toolbar-card{
+    background:#141826;
+    border:1px solid #23283d;
+    border-radius:18px;
+    padding:18px;
+    margin-bottom:25px;
+}
+
+.top-toolbar{
+    display:flex;
+    align-items:center;
+    gap:18px;
+}
+
+.search-box{
+    flex:1;
+    height:56px;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:0 20px;
+    background:#1b2032;
+    border:1px solid #30354c;
+    border-radius:12px;
+}
+
+.search-box svg{
+    color:#7e87aa;
+    font-size:18px;
+}
+
+.search-box input{
+    flex:1;
+    background:none;
+    border:none;
+    outline:none;
+    color:white;
+    font-size:15px;
+}
+
+.search-box input::placeholder{
+    color:#7d84a7;
+}
+
+.top-toolbar select{
+    width:170px;
+    height:56px;
+    background:#1b2032;
+    border:1px solid #7c3aed;
+    border-radius:12px;
+    color:white;
+    padding:0 15px;
+}
+
+.add-btn{
+    height:56px;
+    padding:0 28px;
+    border:none;
+    border-radius:12px;
+    background:#7c3aed;
+    color:white;
+    font-weight:600;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    cursor:pointer;
+}
+
+.add-btn:hover{
+    background:#9257ff;
+}
+
+/* ================= TABLE ================= */
+
+.table-card{
+    margin-top:24px;
+    background:#141826;
+    border:1px solid #24293d;
+    border-radius:18px;
+    padding:18px;
+}
+
+.table-wrapper{
+    overflow-x:auto;
+}
+
+.product-table{
+    width:100%;
+    border-radius:14px;
+    overflow:hidden;
+}
+.table-header{
+    display:grid;
+    grid-template-columns:
+    90px
+    110px
+    300px
+    140px
+    180px
+    100px
+    100px
+    110px
+    90px
+    150px
+    120px;
+
+    align-items:center;
+
+    padding:18px 18px;
+
+    background:#22273b;
+
+    color:#8f99bc;
+
+    font-size:12px;
+
+    font-weight:700;
+
+    text-transform:uppercase;
+
+    border-radius:10px;
+}
+.table-row{
+    display:grid;
+    grid-template-columns:
+    90px
+    110px
+    300px
+    140px
+    180px
+    100px
+    100px
+    110px
+    90px
+    150px
+    120px;
+
+    align-items:center;
+
+    padding:22px 18px;
+
+    border-bottom:1px solid #252a3e;
+
+    transition:.25s;
+}
+
+.table-row:hover{
+    background:#1a1f31;
+}
+.table-row strong{
+    font-size:16px;
+    font-weight:700;
+    display:block;
+    margin-bottom:6px;
+}
+.table-row small{
+    display:block;
+    color:#7f89aa;
+    font-size:12px;
+    line-height:18px;
+}
+
+/* ================= SIZE CHIP ================= */
+
+.size-chip{
+    display:inline-block;
+    background:#6b3df0;
+    color:white;
+    padding:4px 9px;
+    border-radius:5px;
+    font-size:11px;
+    margin-bottom:6px;
+}
+
+.color-text{
+    color:#9ca8d3;
+    font-size:12px;
+}
+
+/* ================= STOCK ================= */
+
+.stock-badge{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+
+    min-width:44px;
+
+    padding:5px 10px;
+
+    border-radius:5px;
+
+    font-size:11px;
+
+    font-weight:600;
+}
+
+.stock-badge.good{
+    background:#083b2d;
+    color:#27d17c;
+}
+
+.stock-badge.low{
+    background:#522121;
+    color:#ff5c5c;
+}
+
+/* ================= ACTION ================= */
+
+.action-btns{
+    display:flex;
+    justify-content:center;
+    gap:10px;
+}
+.icon-btn{
+    width:32px;
+    height:32px;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    background:#2a3045;
+
+    border:none;
+
+    border-radius:8px;
+
+    color:white;
+
+    cursor:pointer;
+
+    transition:.25s;
+}
+.icon-btn:hover{
+    background:#7c3aed;
+}
+
+.icon-btn.delete:hover{
+    background:#ef4444;
+}
+
+/* ================= MODAL ================= */
+
+.modal-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.78);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    z-index:999;
+}
+
+.product-modal{
+    width:930px;
+    background:#151928;
+    border-radius:20px;
+    padding:30px;
+}
+
+.modal-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:25px;
+}
+
+.close-btn{
+    background:none;
+    border:none;
+    color:white;
+    font-size:22px;
+    cursor:pointer;
+}
+
+.form-grid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:18px;
+}
+
+.form-grid input,
+.form-grid select{
+    height:52px;
+    background:#22273b;
+    border:1px solid #323852;
+    border-radius:10px;
+    color:white;
+    padding:0 15px;
+}
+
+.modal-buttons{
+    display:flex;
+    justify-content:flex-end;
+    gap:15px;
+    margin-top:28px;
+}
+
+.cancel-btn{
+    width:140px;
+    height:48px;
+    background:#2d3349;
+    border:none;
+    border-radius:10px;
+    color:white;
+}
+
+.save-btn{
+    width:190px;
+    height:48px;
+    background:#7c3aed;
+    border:none;
+    border-radius:10px;
+    color:white;
+}
+
+/* ================= BARCODE ================= */
+
+.barcode-modal{
+    width:520px;
+    background:#151928;
+    padding:30px;
+    border-radius:18px;
+}
+
+.barcode-card{
+    background:white;
+    color:black;
+    border-radius:10px;
+    padding:28px;
+    text-align:center;
+    margin:25px 0;
+}
+
+.barcode-card h1{
+    font-size:40px;
+    letter-spacing:6px;
+    margin:25px 0;
+}
+.table-row:nth-child(even){
+    background:#161a29;
+}
+
+.table-row:hover{
+    background:#1d2235;
+}

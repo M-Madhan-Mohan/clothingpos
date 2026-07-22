@@ -1,0 +1,296 @@
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Inter,sans-serif;
+}
+
+body{
+    background:#0d0f1b;
+}
+
+.barcode-page{
+    padding:30px;
+    min-height:100vh;
+    background:#0d0f1b;
+    color:#fff;
+}
+
+.page-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:25px;
+}
+
+.header-left h1{
+    font-size:34px;
+    margin-bottom:5px;
+}
+
+.header-left p{
+    color:#94a3b8;
+    font-size:14px;
+}
+
+.header-right{
+    display:flex;
+    gap:12px;
+}
+
+.date-box{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:12px 18px;
+    background:#1b1f31;
+    border:1px solid #313752;
+    border-radius:12px;
+}
+
+.toolbar-card{
+    background:#171a29;
+    border:1px solid #2e3450;
+    border-radius:16px;
+    padding:22px;
+    display:flex;
+    gap:15px;
+    margin-bottom:25px;
+}
+
+.toolbar-card select{
+    flex:1;
+    height:52px;
+    border:none;
+    border-radius:10px;
+    padding:0 15px;
+    background:#252a40;
+    color:#fff;
+}
+
+.purple-btn,
+.dark-btn,
+.green-btn{
+    height:52px;
+    padding:0 24px;
+    border:none;
+    border-radius:10px;
+    color:white;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-weight:600;
+}
+
+.purple-btn{
+    background:#7c3aed;
+}
+
+.dark-btn{
+    background:#313752;
+}
+
+.green-btn{
+    background:#10b981;
+}
+
+.barcode-content{
+    display:grid;
+    grid-template-columns:380px 1fr;
+    gap:24px;
+}
+
+.queue-card,
+.preview-card{
+    background:#171a29;
+    border:1px solid #2e3450;
+    border-radius:18px;
+    padding:22px;
+}
+
+.queue-card h2,
+.preview-card h2{
+    margin-bottom:8px;
+}
+
+.preview-text{
+    color:#94a3b8;
+    font-size:14px;
+    margin-bottom:18px;
+}
+
+.queue-row{
+    display:grid;
+    grid-template-columns:1.8fr 1fr 70px 45px;
+    gap:12px;
+    align-items:center;
+    padding:15px 0;
+    border-bottom:1px solid #2d3146;
+}
+
+.queue-row strong{
+    display:block;
+}
+
+.queue-row p{
+    font-size:13px;
+    color:#94a3b8;
+}
+
+.queue-row input{
+    width:60px;
+    height:38px;
+    text-align:center;
+    background:#252a40;
+    color:white;
+    border:none;
+    border-radius:8px;
+}
+
+.delete-btn{
+    width:40px;
+    height:40px;
+    border:none;
+    border-radius:8px;
+    background:#ef4444;
+    color:white;
+    cursor:pointer;
+}
+
+.preview-area{
+    background:#353230;
+    border-radius:10px;
+    padding:25px;
+    display:flex;
+    gap:20px;
+    flex-wrap:wrap;
+    min-height:380px;
+    align-items:flex-start;
+}
+
+
+/* ================= RETAIL STICKER ================= */
+/* ================= LABEL ================= */
+
+.label-card{
+    width:220px;
+    min-height:300px;
+    background:#ffffff;
+    border:1px solid #d8d8d8;
+    border-radius:8px;
+    padding:14px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    color:#000;
+    font-family:Arial, Helvetica, sans-serif;
+    box-shadow:0 2px 6px rgba(0,0,0,.12);
+}
+
+.label-header{
+    width:100%;
+    text-align:center;
+    font-size:24px;
+    font-weight:900;
+    letter-spacing:1px;
+    margin-bottom:14px;
+}
+
+.label-product{
+    width:100%;
+    text-align:center;
+    font-size:15px;
+    font-weight:600;
+    text-transform:uppercase;
+    line-height:22px;
+    margin-bottom:12px;
+    min-height:45px;
+}
+
+.label-info{
+    width:100%;
+    display:flex;
+    justify-content:space-between;
+    font-size:13px;
+    font-weight:600;
+    margin-bottom:10px;
+}
+
+.label-line{
+    width:100%;
+    border-top:1px dashed #bdbdbd;
+    margin-bottom:14px;
+}
+
+.barcode-wrapper{
+    width:100%;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    margin-bottom:8px;
+}
+
+.barcode-wrapper svg{
+    width:150px !important;
+    height:60px !important;
+}
+
+.barcode-number{
+    width:100%;
+    text-align:center;
+    font-size:16px;
+    letter-spacing:1px;
+    font-weight:500;
+    margin-bottom:18px;
+}
+
+.price-box{
+    width:100%;
+    text-align:center;
+    font-size:16px;
+    font-weight:600;
+    margin-top:6px;
+    margin-bottom:6px;
+}
+
+.footer-text{
+    width:100%;
+    text-align:center;
+    font-size:10px;
+    color:#666;
+    line-height:15px;
+}
+
+@media print{
+
+    body{
+        background:#fff;
+    }
+
+    .page-header,
+    .toolbar-card,
+    .queue-card{
+        display:none;
+    }
+
+    .preview-card{
+        border:none;
+        padding:0;
+        box-shadow:none;
+        background:#fff;
+    }
+
+    .preview-area{
+        background:#fff;
+        gap:12px;
+        padding:0;
+    }
+
+    .label-card{
+        break-inside:avoid;
+        page-break-inside:avoid;
+        box-shadow:none;
+    }
+
+}
