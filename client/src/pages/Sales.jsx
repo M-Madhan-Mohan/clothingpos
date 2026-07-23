@@ -75,7 +75,7 @@ function Sales() {
       <html><head><title>${sale.id}</title>
       <style>body{font-family:Arial;padding:24px;color:#111}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{padding:8px;border-bottom:1px solid #ddd;text-align:left}.right{text-align:right}.total{font-size:18px;font-weight:bold;margin-top:18px;text-align:right}</style>
       </head><body>
-      <h2 style="text-align:center">CLOTHING POS</h2>
+      <h2 style="text-align:center">RS9 EXPORTS</h2>
       <p><b>Invoice:</b> INV-${sale.id.slice(-6)}<br/><b>Customer:</b> ${sale.customer_name}<br/><b>Mobile:</b> ${sale.customer_mobile || "N/A"}<br/><b>Payment:</b> ${sale.payment_mode}</p>
       <table><thead><tr><th>Product</th><th class="right">Qty</th><th class="right">Price</th><th class="right">Total</th></tr></thead><tbody>
       ${selectedSale.map((item) => `<tr><td>${item.name}</td><td class="right">${item.qty}</td><td class="right">${formatCurrency(item.price)}</td><td class="right">${formatCurrency(item.total)}</td></tr>`).join("")}
@@ -91,7 +91,7 @@ function Sales() {
       <header className="sales-header">
         <div>
           <h1>Sales Log &amp; Invoices</h1>
-          <p>● RAINTECH CLOTHING STUDIO</p>
+          <p>● RS9 EXPORTS</p>
         </div>
         <div className="sales-date-chips">
           <span><FaCalendarAlt /> {new Date().toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short", year: "numeric" })}</span>

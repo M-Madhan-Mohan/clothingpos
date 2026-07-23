@@ -1,0 +1,101 @@
+:root{
+  --bg:#07080b;
+  --panel:#0f1720;
+  --muted:#9aa3b2;
+  --accent:#7c5cff;
+  --white:#ffffff;
+  --border:rgba(255,255,255,0.08);
+}
+
+.customers-page{
+  padding:28px 40px;
+  color:var(--white);
+  background:transparent;
+  min-height: calc(100vh - 40px);
+}
+
+.customers-header h1{
+  font-size:56px;
+  margin:8px 0 18px 0;
+  font-weight:700;
+}
+
+.customers-controls{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  margin-bottom:18px;
+}
+
+.customers-controls input{
+  background:transparent;
+  border:1px solid var(--border);
+  padding:8px 10px;
+  color:var(--white);
+  border-radius:4px;
+}
+
+.btn-add{
+  background:var(--accent);
+  color:#fff;
+  border:none;
+  padding:8px 12px;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+.btn-edit{
+  background:#2563eb;
+  color:#fff;
+  border:none;
+  padding:6px 10px;
+  border-radius:6px;
+  cursor:pointer;
+  margin-right:6px;
+}
+
+.customers-table-wrap{
+  overflow:auto;
+  background:transparent;
+}
+
+.customers-table{
+  border-collapse:collapse;
+  width:100%;
+  max-width:900px;
+}
+
+.customers-table th, .customers-table td{
+  border:1px solid var(--border);
+  padding:8px 10px;
+  text-align:left;
+}
+
+.customers-table thead th{
+  background:rgba(255,255,255,0.04);
+  color:var(--white);
+  font-weight:700;
+}
+
+.customers-table tbody tr{
+  background:rgba(255,255,255,0.02);
+}
+
+.btn-delete{
+  background:transparent;
+  border:1px solid rgba(255,255,255,0.06);
+  color:#ff6b6b;
+  padding:6px 8px;
+  border-radius:4px;
+  cursor:pointer;
+}
+
+.last-purchase{
+  color:var(--muted);
+  font-size:13px;
+}
+
+@media (max-width:720px){
+  .customers-controls{flex-direction:column;align-items:stretch}
+  .customers-header h1{font-size:40px}
+}

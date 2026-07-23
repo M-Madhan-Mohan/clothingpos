@@ -26,7 +26,11 @@ const getStats = (req, res) => {
 
       (SELECT IFNULL(SUM(grand_total),0)
        FROM transactions
-       WHERE DATE(date)=CURDATE()) AS todayRevenue
+       WHERE DATE(date)=CURDATE()) AS todayRevenue,
+
+      (SELECT IFNULL(SUM(gst_amount),0)
+       FROM transactions
+       WHERE DATE(date)=CURDATE()) AS todayGst
     `,
     (err, result) => {
       if (err) {
@@ -99,8 +103,60 @@ const getTopProducts = (req, res) => {
     }
   );
 };
+
+const getAnalytics = (req, res) => {
+  db.query(
+    `SELECT DATE_FORMAT(date, '%Y-%m-%d') AS sale_date, IFNULL(SUM(grand_total), 0) AS revenue
+     FROM transactions
+     WHERE date >= CURDATE() - INTERVAL 6 DAY
+     GROUP BY DATE_FORMAT(date, '%Y-%m-%d')
+     ORDER BY sale_date`,
+    (trendError, trendRows) => {
+      if (trendError) return res.status(500).json(trendError);
+
+      db.query(
+        `SELECT COALESCE(NULLIF(p.category, ''), 'Uncategorized') AS category,
+           IFNULL(SUM(ti.total), 0) AS revenue
+         FROM transaction_items ti
+         LEFT JOIN products p ON p.id = ti.product_id
+         INNER JOIN transactions t ON t.id = ti.transaction_id
+         GROUP BY COALESCE(NULLIF(p.category, ''), 'Uncategorized')
+         ORDER BY revenue DESC`,
+        (categoryError, categories) => {
+          if (categoryError) return res.status(500).json(categoryError);
+
+          const totalsByDate = new Map(
+            trendRows.map((row) => [row.sale_date, Number(row.revenue)])
+          );
+          const trend = Array.from({ length: 7 }, (_, index) => {
+            const date = new Date();
+            date.setHours(0, 0, 0, 0);
+            date.setDate(date.getDate() - (6 - index));
+            const dateKey = [
+              date.getFullYear(),
+              String(date.getMonth() + 1).padStart(2, "0"),
+              String(date.getDate()).padStart(2, "0")
+            ].join("-");
+            return {
+              date: dateKey,
+              label: date.toLocaleDateString("en-IN", { month: "short", day: "numeric" }),
+              revenue: totalsByDate.get(dateKey) || 0
+            };
+          });
+
+          return res.json({
+            trend,
+            categories: categories.map((row) => ({ ...row, revenue: Number(row.revenue) }))
+          });
+        }
+      );
+    }
+  );
+};
+
 module.exports = {
   getStats,
   getMonthlySales,
   getTopProducts,
+  getAnalytics,
 };

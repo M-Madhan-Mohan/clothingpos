@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import Barcode from "react-barcode";
 import {
   FaSearch,
   FaPlus,
@@ -11,7 +12,7 @@ import {
 } from "react-icons/fa";
 
 import "../styles/products.css";
-function Products() {
+function Products({ readOnly = false }) {
   const [products, setProducts] = useState([]);
 
 const [search, setSearch] = useState("");
@@ -133,10 +134,10 @@ setStock("");
 setMinStock("");
 
 setShowModal(false);
+loadProducts();
     } catch (error) {
       console.log(error);
-      console.log(error.response?.data);
-      alert(JSON.stringify(error.response?.data));
+      alert(error.response?.data?.message || "Unable to save the product. Please try again.");
     }
   };
 
@@ -189,7 +190,7 @@ setShowModal(false);
 
 <h1>Garment Product Master</h1>
 
-<p>📍 RAINTECH CLOTHING STUDIO</p>
+<p>📍 RS9 EXPORTS</p>
 
 </div>
 
@@ -252,7 +253,7 @@ onChange={(e)=>setCategoryFilter(e.target.value)}
 
 </select>
 
-<button
+{!readOnly && <button
 className="add-btn"
 onClick={()=>{
 setEditId(null);
@@ -265,6 +266,7 @@ setShowModal(true);
 Add Product
 
 </button>
+}
 
 </div>
 
@@ -459,6 +461,30 @@ editId
 
 )}
 
+{showBarcode && selectedProduct && (
+<div className="modal-overlay barcode-preview-overlay" role="dialog" aria-modal="true" aria-label="Barcode label preview">
+  <div className="barcode-preview-modal">
+    <div className="modal-header">
+      <h2>Barcode Label Preview</h2>
+      <button className="close-btn" aria-label="Close barcode preview" onClick={() => { setShowBarcode(false); setSelectedProduct(null); }}><FaTimes /></button>
+    </div>
+    <div className="barcode-preview-stage">
+      <article className="barcode-label">
+        <strong>RS9 EXPORTS</strong>
+        <span className="barcode-label-product">{selectedProduct.name}</span>
+        <div className="barcode-label-details"><span>Size: <b>{selectedProduct.size || "Free Size"}</b></span><span>Color: <b>{selectedProduct.color || "N/A"}</b></span></div>
+        <div className="barcode-label-rule" />
+        <Barcode value={String(selectedProduct.barcode || selectedProduct.code || selectedProduct.id)} format="CODE128" width={1.12} height={46} margin={0} displayValue={false} background="#fff" />
+        <span className="barcode-label-number">{selectedProduct.barcode || selectedProduct.code || selectedProduct.id}</span>
+        <strong className="barcode-label-mrp">MRP: &#8377;{Number(selectedProduct.mrp || selectedProduct.selling_price || 0).toFixed(2)}</strong>
+        <small>Art: {selectedProduct.code || `P-${String(selectedProduct.id).padStart(4, "0")}`} | INCL. ALL TAXES</small>
+      </article>
+    </div>
+    <div className="barcode-preview-actions"><span>Standard label: 50mm x 25mm</span><button onClick={() => { setShowBarcode(false); setSelectedProduct(null); }}>Close</button><button className="barcode-print-label" onClick={() => window.print()}>Print Label</button></div>
+  </div>
+</div>
+)}
+
 <div className="table-card">
 
 <div className="table-header">
@@ -483,7 +509,7 @@ editId
 
 <div>STOCK STATUS</div>
 
-<div>ACTIONS</div>
+<div>{readOnly ? "LABEL" : "ACTIONS"}</div>
 
 </div>
 
@@ -491,11 +517,9 @@ editId
 
 .filter(product=>
 
-(product.name || "")
+[product.code, product.barcode, product.name, product.brand]
 
-.toLowerCase()
-
-.includes(search.toLowerCase())
+.some((value) => String(value || "").toLowerCase().includes(search.toLowerCase()))
 
 &&
 
@@ -522,7 +546,7 @@ className="table-row"
 
 </div>
 
-<div>
+<div className="barcode-preview-cell" onClick={()=>{ setSelectedProduct(product); setShowBarcode(true); }} role="button" tabIndex={0} onKeyDown={(event)=>{ if(event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedProduct(product); setShowBarcode(true); } }}>
 
 🏷 {product.barcode}
 
@@ -647,7 +671,7 @@ setShowBarcode(true);
 
 </button>
 
-<button
+{!readOnly && <button
 className="icon-btn"
 
 onClick={()=>{
@@ -689,8 +713,9 @@ setShowModal(true);
 <FaEdit/>
 
 </button>
+}
 
-<button
+{!readOnly && <button
 className="icon-btn delete"
 
 onClick={()=>deleteProduct(product.id)}
@@ -700,6 +725,7 @@ onClick={()=>deleteProduct(product.id)}
 <FaTrash/>
 
 </button>
+}
 
 </div>
 

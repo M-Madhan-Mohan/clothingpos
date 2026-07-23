@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import axios from "axios";
+import { BrowserMultiFormatReader } from "@zxing/browser";
 import {
   FaSearch,
   FaShoppingBag,
@@ -8,10 +9,14 @@ import {
   FaPlus,
   FaMinus,
   FaCalendarAlt,
-  FaClock
+  FaClock,
+  FaPrint,
+  FaTimes
 } from "react-icons/fa";
 
 import "../styles/posterminal.css";
+const STORE_SETTINGS_KEY = "clothing-pos-store-settings";
+const DEFAULT_STORE = { storeName: "RS9 EXPORTS", storeAddress: "RAINTECH BUILDING, VADAYAR PO, KOTTAYAM, KERALA", contactNumber: "+91 8078311945", gstin: "32AAAAA1111A1Z1" };
 const POSTerminal = () => {
 
 const [products, setProducts] = useState([]);
@@ -20,6 +25,13 @@ const [customers, setCustomers] = useState([]);
 const [cart, setCart] = useState([]);
 
 const [search, setSearch] = useState("");
+
+const [gridFilter, setGridFilter] = useState("");
+const [showScanner, setShowScanner] = useState(false);
+const [scannerMessage, setScannerMessage] = useState("");
+const scannerVideoRef = useRef(null);
+const scannerStreamRef = useRef(null);
+const scannerControlsRef = useRef(null);
 
 const [category, setCategory] =
   useState("ALL");
@@ -33,8 +45,9 @@ const [paymentMode, setPaymentMode] =
 const [cashReceived, setCashReceived] =
   useState("");
 
-const [discount, setDiscount] =
-  useState(0);
+const [customerNameInput, setCustomerNameInput] = useState("");
+const [customerPhoneInput, setCustomerPhoneInput] = useState("");
+const [customerAddressInput, setCustomerAddressInput] = useState("");
 
 const [showCheckout, setShowCheckout] =
   useState(false);
@@ -99,62 +112,120 @@ const removeItem = (id) => {
     }
   };
 
-  const addToCart = (product) => {
-    const existing = cart.find(
-      (item) => item.id === product.id
-    );
+const addToCart = (product) => {
+    setCart((prevCart) => {
+      const existing = prevCart.find((item) => item.id === product.id);
 
-    if (existing) {
-  if (existing.qty >= product.stock) {
-    alert("No More Stock");
-    return;
-  }
+      if (existing) {
+        if (existing.qty >= Number(product.stock || 0)) {
+          alert("No More Stock");
+          return prevCart;
+        }
 
-  setCart(
-        cart.map((item) =>
+        return prevCart.map((item) =>
           item.id === product.id
             ? {
                 ...item,
                 qty: item.qty + 1
               }
             : item
-        )
-      );
-    } else {
-      setCart([
-        ...cart,
-        {
-  ...product,
-  qty: 1,
-  discount: 0
-}
-      ]);
-    }
-  };
-
-  const increaseQty = (id) => {
-  setCart(
-    cart.map((item) => {
-      if (item.id === id) {
-        if (item.qty >= item.stock) {
-          alert("No More Stock");
-          return item;
-        }
-
-        return {
-          ...item,
-          qty: item.qty + 1
-        };
+        );
       }
 
-      return item;
-    })
-  );
-};
+      return [
+        ...prevCart,
+        {
+          ...product,
+          qty: 1,
+          discount: 0
+        }
+      ];
+    });
+  };
+
+  const closeScanner = () => {
+    scannerControlsRef.current?.stop();
+    scannerControlsRef.current = null;
+    scannerStreamRef.current?.getTracks().forEach((track) => track.stop());
+    scannerStreamRef.current = null;
+    setShowScanner(false);
+  };
+
+  useEffect(() => {
+    if (!showScanner) return undefined;
+    let isActive = true;
+    let frameId;
+
+    const startScanner = async () => {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setScannerMessage("Camera access is not available on this device.");
+        return;
+      }
+
+      try {
+        setScannerMessage("Point the camera at a product barcode.");
+        const video = scannerVideoRef.current;
+        if (!video) return;
+        const reader = new BrowserMultiFormatReader();
+        const controls = await reader.decodeFromConstraints(
+          { video: { facingMode: { ideal: "environment" } }, audio: false },
+          video,
+          (result) => {
+            if (!isActive || !result) return;
+            const barcode = result.getText().trim();
+            const product = products.find((item) => String(item.barcode).trim() === barcode);
+            if (product) {
+              addToCart(product);
+              closeScanner();
+              return;
+            }
+            setScannerMessage(`Barcode ${barcode} was not found in your products.`);
+          }
+        );
+        if (!isActive) {
+          controls.stop();
+          return;
+        }
+        scannerControlsRef.current = controls;
+      } catch (error) {
+        setScannerMessage(error.name === "NotAllowedError" ? "Camera permission was denied. Allow camera access and try again." : "Unable to start the camera. Check that it is not being used by another app.");
+      }
+    };
+
+    startScanner();
+    return () => {
+      isActive = false;
+      cancelAnimationFrame(frameId);
+      scannerControlsRef.current?.stop();
+      scannerControlsRef.current = null;
+      scannerStreamRef.current?.getTracks().forEach((track) => track.stop());
+      scannerStreamRef.current = null;
+    };
+  }, [showScanner, products, cart]);
+
+  const increaseQty = (id) => {
+    setCart((prevCart) =>
+      prevCart.map((item) => {
+        if (item.id === id) {
+          if (item.qty >= Number(item.stock || 0)) {
+            alert("No More Stock");
+            return item;
+          }
+
+          return {
+            ...item,
+            qty: item.qty + 1
+          };
+        }
+
+        return item;
+      })
+    );
+  };
 
   const decreaseQty = (id) => {
-    setCart(
-      cart
+    setCart((prevCart) =>
+      prevCart
         .map((item) =>
           item.id === id
             ? {
@@ -172,38 +243,45 @@ const removeItem = (id) => {
   };
 
 const subtotal = cart.reduce(
-(sum,item)=>
-
-sum+
-
-(item.qty*Number(item.selling_price))
-
--
-
-Number(item.discount||0),
-
-0
+  (sum, item) => sum + (Number(item.qty || 0) * Number(item.selling_price || 0)) - Number(item.discount || 0),
+  0
 );
 
-const gstAmount=subtotal*0.12;
+const gstAmount = subtotal * 0.12;
 
-const discountAmount=cart.reduce(
-
-(sum,item)=>
-
-sum+
-
-Number(item.discount||0),
-
-0
-
+const discountAmount = cart.reduce(
+  (sum, item) => sum + Number(item.discount || 0),
+  0
 );
 
-const grandTotal=
+const grandTotal = subtotal + gstAmount;
 
-subtotal+
+const printReceipt = (bill = invoiceData) => {
+  if (!bill) return;
+  const receiptWindow = window.open("", "_blank", "width=420,height=720");
+  if (!receiptWindow) return alert("Please allow pop-ups to print the receipt.");
+  const money = (amount) => `&#8377;${Number(amount || 0).toFixed(2)}`;
+  const safe = (value = "") => String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const rows = bill.items.map((item) => {
+    const taxable = item.qty * Number(item.selling_price) - Number(item.discount || 0);
+    return `<tr><td><b>${safe(item.name)}</b><small>Size: ${safe(item.size || "Free Size")} | Color: ${safe(item.color || "N/A")} | GST ${item.gst_rate || 12}%</small></td><td class="right">${item.qty} x ${money(item.selling_price)}</td><td class="right">${money(taxable * 1.12)}</td></tr>`;
+  }).join("");
+  receiptWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${safe(bill.invoiceNo)}</title><style>@page{size:80mm auto;margin:4mm}*{box-sizing:border-box}body{margin:0;font:11px Arial;color:#111}.receipt{width:72mm;margin:auto}.center{text-align:center}h1{font-size:16px;margin:0 0 7px}p{line-height:1.45;margin:3px 0}.rule{border:0;border-top:1px dashed #111;margin:10px 0}table{width:100%;border-collapse:collapse}th{text-align:left;padding-bottom:6px;border-bottom:1px dashed #111}td{padding:7px 0;vertical-align:top;border-bottom:1px dotted #999}small{display:block;color:#555;margin-top:3px;line-height:1.35}.right{text-align:right;white-space:nowrap;padding-left:5px}.totals div{display:flex;justify-content:space-between;padding:4px 0}.total{font-size:14px;font-weight:700;border-top:1px dashed #111;border-bottom:1px dashed #111;margin-top:5px;padding:9px 0!important}.thanks{text-align:center;font-weight:700;margin-top:14px}</style></head><body><main class="receipt"><header class="center"><h1>${safe(bill.store.storeName)}</h1><p>${safe(bill.store.storeAddress)}</p><p>GSTIN: ${safe(bill.store.gstin || "N/A")} | Ph: ${safe(bill.store.contactNumber || "N/A")}</p></header><hr class="rule"><p><b>Invoice:</b> ${safe(bill.invoiceNo)}<br><b>Date:</b> ${new Date(bill.date).toLocaleString("en-IN")}<br><b>Customer:</b> ${safe(bill.customer)}${bill.mobile ? ` (${safe(bill.mobile)})` : ""}<br><b>Payment:</b> ${safe(bill.payment)}</p><hr class="rule"><table><thead><tr><th>Item Description</th><th class="right">Qty/Price</th><th class="right">Total</th></tr></thead><tbody>${rows}</tbody></table><section class="totals"><div><span>Subtotal (Taxable)</span><span>${money(bill.subtotal)}</span></div>${bill.discountAmount > 0 ? `<div><span>Discount</span><span>-${money(bill.discountAmount)}</span></div>` : ""}<div><span>GST Amount</span><span>${money(bill.gst)}</span></div><div class="total"><span>GRAND TOTAL (${safe(bill.payment)})</span><span>${money(bill.total)}</span></div></section><p class="thanks">*** THANK YOU! VISIT AGAIN ***</p></main></body></html>`);
+  receiptWindow.document.close();
+  receiptWindow.focus();
+  setTimeout(() => receiptWindow.print(), 300);
+};
 
-gstAmount;
+const closeReceipt = () => {
+  setShowInvoice(false);
+  setShowCheckout(false);
+  setInvoiceData(null);
+  setCart([]);
+  setSelectedCustomer("");
+  setPaymentMode("Cash");
+  setCashReceived("");
+};
+
 const saveBill = async () => {
   if (cart.length === 0) {
     alert("Cart Empty");
@@ -219,61 +297,75 @@ const saveBill = async () => {
 }
 
   try {
-    const customer = customers.find(
-      (c) => c.id == selectedCustomer
-    );
+    const customer = customers.find((c) => c.id == selectedCustomer);
 
-    const response = await axios.post(
-      "http://localhost:5000/api/sales/save",
-      {
-        total: grandTotal,
+    let usedCustomer = customer;
+    if (!usedCustomer && (customerNameInput.trim() || customerPhoneInput.trim())) {
+      try {
+        const createRes = await axios.post("http://localhost:5000/api/customers/add", {
+          customer_name: customerNameInput.trim() || "Walk-in Customer",
+          phone: customerPhoneInput.trim(),
+          address: customerAddressInput.trim()
+        });
 
-        cart: cart.map((item) => ({
-          id: item.id,
-          name: item.name,
-          size: item.size || "",
-          color: item.color || "",
-          quantity: item.qty,
-          selling_price:
-            item.selling_price,
-          gst_rate:
-            item.gst_rate || 0
-        })),
-
-        customerName:
-          customer?.customer_name ||
-          "Walk-in Customer",
-
-        customerMobile:
-          customer?.phone || "",
-        
-        
-
-        paymentMode
+        await loadCustomers();
+        usedCustomer = {
+          id: createRes.data.customerId,
+          customer_name: customerNameInput.trim() || "Walk-in Customer",
+          phone: customerPhoneInput.trim(),
+          address: customerAddressInput.trim()
+        };
+      } catch (err) {
+        console.log("Failed to create customer:", err);
       }
-    );
+    }
 
-    const invoiceNo =
-      response.data.transactionId;
+    const response = await axios.post("http://localhost:5000/api/sales/save", {
+      total: grandTotal,
+      cart: cart.map((item) => ({
+        id: item.id,
+        name: item.name,
+        size: item.size || "",
+        color: item.color || "",
+        quantity: item.qty,
+        selling_price: item.selling_price,
+        gst_rate: item.gst_rate || 0
+      })),
+      customerName: usedCustomer?.customer_name || "Walk-in Customer",
+      customerMobile: usedCustomer?.phone || "",
+      paymentMode
+    });
+
+    const invoiceNo = response.data.invoiceId || response.data.transactionId;
+    let store = DEFAULT_STORE;
+    try {
+      store = { ...DEFAULT_STORE, ...JSON.parse(localStorage.getItem(STORE_SETTINGS_KEY) || "{}") };
+    } catch {
+      // Use the default store profile when saved settings are invalid.
+    }
       setInvoiceData({
   invoiceNo,
-  customer:
-    customer?.customer_name ||
-    "Walk-in Customer",
-  mobile:
-    customer?.phone || "",
+      customer: usedCustomer?.customer_name || customer?.customer_name || "Walk-in Customer",
+      mobile: usedCustomer?.phone || customer?.phone || "",
   payment: paymentMode,
   date: new Date(),
   items: cart,
   subtotal,
   gst: gstAmount,
-  discount,
-  total: grandTotal
+  discountAmount,
+  total: grandTotal,
+  store
 });
 
+setShowCheckout(false);
 setShowInvoice(true);
 
-    const receiptWindow =
+  // clear customer inputs after saving
+  setCustomerNameInput("");
+  setCustomerPhoneInput("");
+  setCustomerAddressInput("");
+
+    /* const receiptWindow =
       window.open("", "_blank");
       
       
@@ -283,7 +375,7 @@ setShowInvoice(true);
       <body style="font-family:Arial;padding:20px">
       
       <h2 style="text-align:center">
-        CLOTHING POS
+        RS9 EXPORTS
       </h2>
 
       <hr>
@@ -361,13 +453,12 @@ Discount:
 
     setTimeout(() => {
       receiptWindow.print();
-    }, 500);
+    }, 500); */
 
   setCart([]);
 setSelectedCustomer("");
 setPaymentMode("Cash");
 setCashReceived("");
-setDiscount(0);
 setShowCheckout(false);
   
 
@@ -390,7 +481,7 @@ RS9 Sales Terminal
 </h1>
 
 <p className="subtitle">
-📍 RS9 CLOTHING POS STUDIO
+📍 RS9 EXPORTS
 </p>
 </div>
 
@@ -435,7 +526,7 @@ setSearch(e.target.value)
 
 </div>
 
-<button className="camera-btn">
+<button className="camera-btn" type="button" onClick={() => { setScannerMessage(""); setShowScanner(true); }}>
 
 <FaCamera />
 
@@ -456,6 +547,8 @@ Quick Select Catalog
 <input
 className="filter-box"
 placeholder="Filter grid..."
+value={gridFilter}
+onChange={(event) => setGridFilter(event.target.value)}
 />
 
 </div>
@@ -548,6 +641,12 @@ ACCESSORIES
                 : p.category ===
                   category
             )
+            .filter((p) => {
+              const query = gridFilter.trim().toLowerCase();
+              if (!query) return true;
+              return [p.name, p.barcode, p.category, p.size, p.color]
+                .some((value) => String(value || "").toLowerCase().includes(query));
+            })
             .map((product) => (
              <div
   key={product.id}
@@ -902,6 +1001,18 @@ removeItem(item.id)
 </button>
         </div>
       </div>
+     {showScanner && (
+  <div className="scanner-backdrop" role="dialog" aria-modal="true" aria-label="Barcode scanner">
+    <section className="scanner-modal">
+      <button className="scanner-close" type="button" aria-label="Close scanner" onClick={closeScanner}><FaTimes /></button>
+      <h2><FaCamera /> Scan Product Barcode</h2>
+      <video ref={scannerVideoRef} className="scanner-video" muted playsInline />
+      <div className="scanner-target" aria-hidden="true" />
+      <p>{scannerMessage || "Starting camera..."}</p>
+      <button className="scanner-cancel" type="button" onClick={closeScanner}>Cancel</button>
+    </section>
+  </div>
+)}
      {showCheckout && (
   <div
     style={{
@@ -957,6 +1068,23 @@ removeItem(item.id)
           </option>
         ))}
       </select>
+
+      <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
+        <input
+          type="text"
+          placeholder="Customer Name (optional)"
+          value={customerNameInput}
+          onChange={(e) => setCustomerNameInput(e.target.value)}
+          style={{ flex: 2, padding: "8px" }}
+        />
+        <input
+          type="text"
+          placeholder="Phone (optional)"
+          value={customerPhoneInput}
+          onChange={(e) => setCustomerPhoneInput(e.target.value)}
+          style={{ flex: 1, padding: "8px" }}
+        />
+      </div>
 
       <label>Payment Mode</label>
 
@@ -1051,9 +1179,11 @@ removeItem(item.id)
         }}
       >
         <button
-          onClick={() =>
-            setShowCheckout(false)
-          }
+          onClick={() => {
+            setShowCheckout(false);
+            setSelectedCustomer("");
+            setCashReceived("");
+          }}
           style={{
             flex: 1,
             padding: "12px",
@@ -1081,6 +1211,31 @@ removeItem(item.id)
         </button>
       </div>
     </div>
+  </div>
+)}
+{showInvoice && invoiceData && (
+  <div className="receipt-backdrop" role="dialog" aria-modal="true" aria-label="GST receipt preview" onClick={closeReceipt}>
+    <section className="receipt-modal" onClick={(event) => event.stopPropagation()}>
+      <button className="receipt-close" aria-label="Close receipt" onClick={closeReceipt}><FaTimes /></button>
+      <div className="receipt-paper">
+        <header>
+          <h2>{invoiceData.store.storeName}</h2>
+          <p>{invoiceData.store.storeAddress}</p>
+          <p>GSTIN: {invoiceData.store.gstin || "N/A"} | Ph: {invoiceData.store.contactNumber || "N/A"}</p>
+        </header>
+        <div className="receipt-rule" />
+        <p><b>Invoice:</b> {invoiceData.invoiceNo}<br /><b>Date:</b> {new Date(invoiceData.date).toLocaleString("en-IN")}<br /><b>Customer:</b> {invoiceData.customer}{invoiceData.mobile ? ` (${invoiceData.mobile})` : ""}<br /><b>Payment:</b> {invoiceData.payment}</p>
+        <div className="receipt-rule" />
+        <table><thead><tr><th>Item Description</th><th>Qty/Price</th><th>Total (&#8377;)</th></tr></thead><tbody>{invoiceData.items.map((item) => <tr key={item.id}><td><b>{item.name}</b><small>Size: {item.size || "Free Size"} | Color: {item.color || "N/A"} | GST {item.gst_rate || 12}%</small></td><td>{item.qty} x {Number(item.selling_price).toFixed(0)}</td><td>{((item.qty * Number(item.selling_price) - Number(item.discount || 0)) * 1.12).toFixed(2)}</td></tr>)}</tbody></table>
+        <div className="receipt-rule" />
+        <div className="receipt-total-row"><span>Subtotal (Taxable)</span><span>&#8377;{invoiceData.subtotal.toFixed(2)}</span></div>
+        {invoiceData.discountAmount > 0 && <div className="receipt-total-row"><span>Discount</span><span>-&#8377;{invoiceData.discountAmount.toFixed(2)}</span></div>}
+        <div className="receipt-total-row"><span>GST Amount</span><span>&#8377;{invoiceData.gst.toFixed(2)}</span></div>
+        <div className="receipt-grand-total"><span>GRAND TOTAL ({invoiceData.payment})</span><span>&#8377;{invoiceData.total.toFixed(2)}</span></div>
+        <div className="receipt-rule" /><p className="receipt-thanks">*** THANK YOU! VISIT AGAIN ***</p>
+      </div>
+      <div className="receipt-actions"><button onClick={closeReceipt}>Done<br />(Close)</button><button className="receipt-print" onClick={() => printReceipt()}><FaPrint /> Print Receipt<br />(80mm)</button></div>
+    </section>
   </div>
 )}
 </div>

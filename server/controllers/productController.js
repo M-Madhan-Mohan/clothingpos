@@ -20,6 +20,14 @@ const addProduct = (req, res) => {
   } = req.body;
 
   const productId = "prod-" + Date.now();
+  // The product form currently collects a barcode but not a separate product
+  // code. `products.code` is mandatory, so create one server-side instead of
+  // passing NULL to MySQL.
+  const productCode = String(code || `P-${barcode || Date.now()}`).trim();
+
+  if (!productCode || !String(name || "").trim()) {
+    return res.status(400).json({ message: "Product code and name are required." });
+  }
 
   const sql = `
     INSERT INTO products
@@ -47,7 +55,7 @@ const addProduct = (req, res) => {
     sql,
     [
       productId,
-      code,
+      productCode,
       name,
       category,
       size,
@@ -65,12 +73,16 @@ const addProduct = (req, res) => {
     (err, result) => {
       if (err) {
         console.log(err);
+        if (err.code === "ER_DUP_ENTRY") {
+          return res.status(409).json({ message: "A product with this code or barcode already exists." });
+        }
         return res.status(500).json(err);
       }
 
       res.json({
         success: true,
-        message: "Product Added Successfully"
+        message: "Product Added Successfully",
+        productCode
       });
     }
   );
@@ -124,7 +136,7 @@ const deleteProduct = (req, res) => {
 };
 const getLowStockProducts = (req, res) => {
   db.query(
-    "SELECT * FROM products WHERE stock <= 5",
+    "SELECT * FROM products WHERE stock <= min_stock",
     (err, results) => {
       if (err)
         return res.status(500).json(err);
@@ -135,37 +147,67 @@ const getLowStockProducts = (req, res) => {
 };
 const updateProduct = (req, res) => {
   const { id } = req.params;
-
   const {
-  name,
-  selling_price,
-  stock
-} = req.body;
+    code,
+    name,
+    category,
+    size,
+    color,
+    cost_price,
+    mrp,
+    selling_price,
+    gst_rate,
+    stock,
+    min_stock,
+    barcode,
+    hsn_code,
+    brand
+  } = req.body;
+
+  const normalizedName = String(name || "").trim();
+  if (!normalizedName) {
+    return res.status(400).json({ message: "Product name is required." });
+  }
 
   db.query(
     `UPDATE products
     SET
-name=?,
-selling_price=?,
-stock=?,
-category=?,
-size=?,
-color=?,
-brand=?
-     WHERE id=?`,
+      code=? ,
+      name=?,
+      category=?,
+      size=?,
+      color=?,
+      cost_price=?,
+      mrp=?,
+      selling_price=?,
+      gst_rate=?,
+      stock=?,
+      min_stock=?,
+      barcode=?,
+      hsn_code=?,
+      brand=?
+    WHERE id=?`,
     [
-  name,
-  selling_price,
-  stock,
-  "General",
-  "M",
-  "Black",
-  "Own Brand",
-  id
-],
-    (err, result) => {
-      if (err)
+      String(code || "").trim() || `P-${Date.now()}`,
+      normalizedName,
+      String(category || "").trim() || "General",
+      String(size || "").trim() || "M",
+      String(color || "").trim() || "Black",
+      Number(cost_price ?? 0),
+      Number(mrp ?? 0),
+      Number(selling_price ?? 0),
+      Number(gst_rate ?? 0),
+      Number(stock ?? 0),
+      Number(min_stock ?? 0),
+      String(barcode || "").trim(),
+      String(hsn_code || "").trim(),
+      String(brand || "").trim() || "Own Brand",
+      id
+    ],
+    (err) => {
+      if (err) {
         return res.status(500).json(err);
+      }
 
       res.json({
         message: "Product Updated"

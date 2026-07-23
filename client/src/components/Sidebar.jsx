@@ -11,7 +11,7 @@ function Sidebar() {
         padding: "20px"
       }}
     >
-      <h2>GlowPOS</h2>
+      <h2>RS9 EXPORTS</h2>
 
       <div style={{ marginTop: "30px" }}>
         <p><Link to="/dashboard">Dashboard</Link></p>

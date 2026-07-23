@@ -1,5 +1,5 @@
-import { useState } from "react";
-
+import { useEffect, useState } from "react";
+import { FaBolt, FaChartPie, FaKeyboard, FaMoon, FaReceipt, FaTshirt, FaSignOutAlt, FaSun, FaTags, FaTools, FaUsers } from "react-icons/fa";
 import Products from "./pages/Products";
 import Dashboard from "./pages/Dashboard";
 import Sales from "./pages/Sales";
@@ -7,263 +7,74 @@ import Customers from "./pages/Customers";
 import Login from "./pages/Login";
 import POSTerminal from "./pages/POSTerminal";
 import BarcodePrinter from "./pages/BarcodePrinter";
+import StoreSettings from "./pages/StoreSettings";
+import "./styles/app-shell.css";
 
+const navItems = [
+  { key: "dashboard", label: "Dashboard", icon: FaChartPie },
+  { key: "pos", label: "POS Terminal", shortcut: "F1", icon: FaReceipt },
+  { key: "products", label: "Products", shortcut: "F7", icon: FaTshirt },
+  { key: "sales", label: "Sales History", icon: FaTags }
+];
 
 function App() {
   const [page, setPage] = useState("pos");
-
-  const [isLoggedIn, setIsLoggedIn] = useState(
-    !!localStorage.getItem("user")
-  );
-
-  const logout = () => {
-    localStorage.removeItem("user");
-    setIsLoggedIn(false);
-  };
-
-  if (!isLoggedIn) {
-    return (
-      <Login
-        onLogin={() =>
-          setIsLoggedIn(true)
-        }
-      />
-    );
-  }
-
-  const menuStyle = (menu) => ({
-    width: "100%",
-    padding: "14px",
-    borderRadius: "12px",
-    border:
-      page === menu
-        ? "1px solid #8b5cf6"
-        : "1px solid #1f2937",
-    background:
-      page === menu
-        ? "#151c35"
-        : "transparent",
-    color: "white",
-    cursor: "pointer",
-    textAlign: "left",
-    fontSize: "15px",
-    transition: "0.3s"
+  const [theme, setTheme] = useState(() => localStorage.getItem("rs9-theme") || "dark");
+  const [user, setUser] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("user")) || null; } catch { return null; }
   });
 
-  return (
-    <div
-      style={{
-        display: "flex",
-        height: "100vh",
-        width: "100vw",
-        background: "#070b18",
-        color: "white",
-        overflow: "hidden"
-      }}
-    >
-      {/* SIDEBAR */}
+  useEffect(() => {
+    localStorage.setItem("rs9-theme", theme);
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
 
-      <div
-        style={{
-          width: "240px",
-          background: "#0f172a",
-          borderRight: "1px solid #1e293b",
-          padding: "20px",
-          display: "flex",
-          flexDirection: "column"
-        }}
-      >
-        {/* LOGO */}
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (!user || event.altKey || event.ctrlKey || event.metaKey || ["INPUT", "TEXTAREA", "SELECT"].includes(event.target.tagName)) return;
+      if (event.key === "F1") { event.preventDefault(); setPage("pos"); }
+      if (event.key === "F7") { event.preventDefault(); setPage("products"); }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [user]);
 
-        <div>
-          <h1
-            style={{
-              color: "#8b5cf6",
-              marginBottom: "5px"
-            }}
-          >
-            GlowPOS
-          </h1>
+  if (!user) return <Login onLogin={setUser} />;
 
-          <p
-            style={{
-              color: "#94a3b8",
-              fontSize: "13px"
-            }}
-          >
-            CLOTH BILLING PRO
-          </p>
-        </div>
+  const isStaff = String(user.role || "").toLowerCase() === "staff";
+  const items = [
+    ...navItems,
+    ...(!isStaff ? [{ key: "customers", label: "Customers", icon: FaUsers }] : []),
+    ...(!isStaff ? [{ key: "barcode", label: "Barcode Labels", icon: FaTags }, { key: "settings", label: "Store Settings", icon: FaTools }] : [])
+  ];
+  const title = items.find((item) => item.key === page)?.label || "POS Terminal";
+  const logout = () => { localStorage.removeItem("user"); setUser(null); setPage("pos"); };
 
-        {/* MENU */}
-
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "12px",
-            marginTop: "40px"
-          }}
-        >
-          <button
-            style={menuStyle("dashboard")}
-            onClick={() =>
-              setPage("dashboard")
-            }
-          >
-            📊 Dashboard
-          </button>
-
-          <button
-            style={menuStyle("pos")}
-            onClick={() =>
-              setPage("pos")
-            }
-          >
-            🛒 POS Terminal (F1)
-          </button>
-
-          <button
-            style={menuStyle("products")}
-            onClick={() =>
-              setPage("products")
-            }
-          >
-            👕 Product Entry (F7)
-          </button>
-
-          <button
-  style={menuStyle("barcode")}
-  onClick={() => setPage("barcode")}
->
-  🏷 Barcode Printer
-</button>
-
-          <button
-            style={menuStyle("sales")}
-            onClick={() =>
-              setPage("sales")
-            }
-          >
-            🕘 Sales History
-          </button>
-
-          <button
-            style={{
-              ...menuStyle("settings"),
-              opacity: 0.8
-            }}
-          >
-            ⚙ Store Settings
-          </button>
-        </div>
-
-        {/* USER PROFILE */}
-
-        <div
-          style={{
-            marginTop: "auto",
-            borderTop: "1px solid #1f2937",
-            paddingTop: "20px",
-            marginBottom: "20px"
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "12px"
-            }}
-          >
-            <div
-              style={{
-                width: "42px",
-                height: "42px",
-                borderRadius: "50%",
-                background: "#3b82f6",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontWeight: "bold"
-              }}
-            >
-              AD
-            </div>
-
-            <div>
-              <div
-                style={{
-                  fontWeight: "bold"
-                }}
-              >
-                Administrator
-              </div>
-
-              <div
-                style={{
-                  color: "#94a3b8",
-                  fontSize: "12px"
-                }}
-              >
-                Master Entry
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* LOGOUT */}
-
-        <button
-          onClick={logout}
-          style={{
-            width: "100%",
-            padding: "12px",
-            borderRadius: "10px",
-            border: "none",
-            background: "#ef4444",
-            color: "white",
-            cursor: "pointer"
-          }}
-        >
-          Logout
-        </button>
+  return <div className="app-shell" data-theme={theme}>
+    <aside className="app-sidebar">
+      <div className="brand-lockup"><span className="brand-mark"><FaBolt /></span><div><strong>RS9 EXPORTS</strong><small>POS MANAGEMENT</small></div></div>
+      <nav className="main-nav" aria-label="Main navigation">
+        <span className="nav-label">Workspace</span>
+        {items.map(({ key, label, shortcut, icon: Icon }) => <button key={key} className={page === key ? "nav-item active" : "nav-item"} onClick={() => setPage(key)}><Icon /><span>{label}</span>{shortcut && <kbd>{shortcut}</kbd>}</button>)}
+      </nav>
+      <div className="sidebar-footer">
+        <div className="user-card"><span className="avatar">{isStaff ? "ST" : "AD"}</span><div><strong>{user.name || user.username || (isStaff ? "Staff Member" : "Administrator")}</strong><small>{isStaff ? "Staff access" : "Administrator"}</small></div></div>
+        <button className="logout-button" onClick={logout}><FaSignOutAlt /> Sign out</button>
       </div>
-
-      {/* MAIN CONTENT */}
-
-      <div
-        style={{
-          flex: 1,
-          height: "100vh",
-          overflowY: "auto",
-          padding: "20px"
-        }}
-      >
-        {page === "dashboard" && (
-          <Dashboard />
-        )}
-
-        {page === "pos" && (
-          <POSTerminal />
-        )}
-
-        {page === "products" && (
-          <Products />
-        )}
-
-        {page === "sales" && (
-          <Sales />
-        )}
-        {page === "barcode" && (
-  <BarcodePrinter />
-)}
-
-        {page === "customers" && (
-          <Customers />
-        )}
-      </div>
-    </div>
-  );
+    </aside>
+    <section className="app-main">
+      <header className="app-topbar"><div><p>RS9 EXPORTS / {isStaff ? "STAFF WORKSPACE" : "ADMIN WORKSPACE"}</p><h1>{title}</h1></div><div className="topbar-actions"><span className="shortcut-help"><FaKeyboard /> F1 POS · F7 Products</span><button className="theme-toggle" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}>{theme === "dark" ? <FaSun /> : <FaMoon />}<span>{theme === "dark" ? "Light" : "Dark"}</span></button></div></header>
+      <main className="app-content">
+        {page === "dashboard" && <Dashboard />}
+        {page === "pos" && <POSTerminal />}
+        {page === "products" && <Products readOnly={isStaff} />}
+        {page === "sales" && <Sales />}
+        {page === "customers" && !isStaff && <Customers />}
+        {page === "barcode" && !isStaff && <BarcodePrinter />}
+        {page === "settings" && !isStaff && <StoreSettings />}
+      </main>
+    </section>
+  </div>;
 }
 
 export default App;

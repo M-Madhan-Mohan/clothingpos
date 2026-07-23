@@ -1,327 +1,78 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import {
+  ArcElement,
+  CategoryScale,
   Chart as ChartJS,
-  CategoryScale,
+  Filler,
+  Legend,
+  LineElement,
   LinearScale,
   PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
+  Tooltip
 } from "chart.js";
+import { Doughnut, Line } from "react-chartjs-2";
+import { FaCalendarAlt, FaChartLine, FaExclamationTriangle, FaReceipt, FaRupeeSign } from "react-icons/fa";
+import "../styles/dashboard.css";
 
-import { Line } from "react-chartjs-2";
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Tooltip, Legend, Filler);
+
+const API = "http://localhost:5000/api";
+const currency = (amount) => `₹${Number(amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 function Dashboard() {
-  const [stats, setStats] = useState({
-  totalProducts: 0,
-  totalCustomers: 0,
-  totalSales: 0,
-  revenue: 0,
-  expenses: 0,
-  profit: 0,
-  todaySales: 0,
-  todayRevenue: 0,
-  todayProfit: 0,
-  lowStockCount: 0
-});
+  const [stats, setStats] = useState({ todayRevenue: 0, todaySales: 0, todayGst: 0, lowStockCount: 0 });
+  const [analytics, setAnalytics] = useState({ trend: [], categories: [] });
   const [lowStock, setLowStock] = useState([]);
-  const [sales, setSales] = useState([]);
-  const [monthlySales, setMonthlySales] =
-  useState([]);
-  const [topProducts, setTopProducts] =
-  useState([]);
+  const [now, setNow] = useState(new Date());
+  const [error, setError] = useState("");
+
   useEffect(() => {
-    axios
-  .get(
-    "http://localhost:5000/api/dashboard/monthly-sales"
-  )
-  .then((res) => {
-    console.log("MONTHLY SALES");
-    console.log(res.data);
-    setMonthlySales(res.data);
-  })
-  .catch((err) => {
-    console.log(err);
-  });
-    axios
-      .get("http://localhost:5000/api/dashboard")
-      .then((res) => {
-        setStats(res.data);
-      })
-      .catch((err) => {
-        console.log(err);
-      });
-
-    axios
-      .get("http://localhost:5000/api/products/low-stock")
-      .then((res) => {
-        setLowStock(res.data);
-      })
-      .catch((err) => {
-        console.log(err);
-      });
-      axios
-  .get(
-    "http://localhost:5000/api/dashboard/top-products"
-  )
-  .then((res) => {
-    setTopProducts(res.data);
-  })
-  .catch((err) => {
-    console.log(err);
-  });
-
-    axios
-      .get("http://localhost:5000/api/sales")
-      .then((res) => {
-        setSales(res.data);
-      })
-      .catch((err) => {
-        console.log(err);
-      });
-
-    axios
-      .get("http://localhost:5000/api/dashboard/monthly-sales")
-      .then((res) => {
-        setMonthlySales(res.data);
-      })
-      .catch((err) => {
-        console.log(err);
-      });
+    const clock = setInterval(() => setNow(new Date()), 1000);
+    Promise.all([
+      axios.get(`${API}/dashboard`),
+      axios.get(`${API}/dashboard/analytics`),
+      axios.get(`${API}/products/low-stock`)
+    ]).then(([statsResponse, analyticsResponse, lowStockResponse]) => {
+      setStats(statsResponse.data);
+      setAnalytics(analyticsResponse.data);
+      setLowStock(lowStockResponse.data);
+    }).catch(() => setError("Live dashboard data is unavailable. Please check that the backend is running."));
+    return () => clearInterval(clock);
   }, []);
-const chartData = {
-  labels: monthlySales.map(
-    (item) => item.month
-  ),
 
-  datasets: [
-    {
-      label: "Revenue",
-      data: monthlySales.map(
-        (item) => Number(item.revenue)
-      ),
-      borderColor: "#3b82f6",
-      backgroundColor:
-        "rgba(59,130,246,0.25)",
-      fill: true,
-      tension: 0.4,
-      borderWidth: 3,
-      pointRadius: 5
-    }
-  ]
-};
-const options = {
-  responsive: true,
-  maintainAspectRatio: false,
+  const trendData = useMemo(() => ({
+    labels: analytics.trend.map((item) => item.label),
+    datasets: [{ data: analytics.trend.map((item) => item.revenue), borderColor: "#8b5cf6", backgroundColor: "rgba(139,92,246,.16)", borderWidth: 3, pointRadius: 3, pointBackgroundColor: "#b59aff", fill: true, tension: .35 }]
+  }), [analytics]);
+  const categoryColors = ["#8247ee", "#19b7d1", "#f59e0b", "#ef5da8", "#5aca89"];
+  const categoryData = useMemo(() => ({
+    labels: analytics.categories.map((item) => item.category),
+    datasets: [{ data: analytics.categories.map((item) => item.revenue), backgroundColor: categoryColors, borderWidth: 0, cutout: "72%" }]
+  }), [analytics]);
+  const totalCategorySales = analytics.categories.reduce((sum, item) => sum + Number(item.revenue), 0);
 
-  plugins: {
-    legend: {
-      labels: {
-        color: "#fff"
-      }
-    }
-  },
-
-  scales: {
-    x: {
-      ticks: {
-        color: "#fff"
-      }
-    },
-
-    y: {
-      beginAtZero: true,
-      ticks: {
-        color: "#fff"
-      }
-    }
-  }
-};
-const card = {
-  border: "1px solid #444",
-  boxShadow: "0 0 10px rgba(255,255,255,0.1)",
-  padding: "20px",
-  borderRadius: "10px",
-  textAlign: "center"
-};
- return (
-  <div
-    style={{
-      padding: "20px",
-      maxWidth: "1400px",
-      margin: "0 auto"
-    }}
-  >
-    <h1 style={{ textAlign: "center" }}>
-      Dashboard
-    </h1>
-
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns:
-          "repeat(auto-fit, minmax(220px, 1fr))",
-        gap: "20px",
-        marginBottom: "30px"
-      }}
-    >
-      <div style={card}>
-        <h3>Products</h3>
-        <h2>{stats.totalProducts}</h2>
+  return <section className="management-dashboard">
+    <header className="dashboard-header">
+      <div><h1>Management Dashboard</h1><p>● RS9 EXPORTS</p></div>
+      <div className="dashboard-chips"><span><FaCalendarAlt /> {now.toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short", year: "numeric" })}</span><span>◷ {now.toLocaleTimeString("en-IN")}</span></div>
+    </header>
+    <main className="dashboard-content">
+      {error && <p className="dashboard-error">{error}</p>}
+      <div className="metric-grid">
+        <Metric label="Today's Sales" value={currency(stats.todayRevenue)} icon={<FaRupeeSign />} variant="green" />
+        <Metric label="Transactions" value={stats.todaySales || 0} icon={<FaReceipt />} variant="purple" />
+        <Metric label="GST Collected" value={currency(stats.todayGst)} icon={<FaChartLine />} variant="amber" />
+        <Metric label="Low Stock Items" value={stats.lowStockCount || 0} icon={<FaExclamationTriangle />} variant="red" />
       </div>
-
-      <div style={card}>
-        <h3>Customers</h3>
-        <h2>{stats.totalCustomers}</h2>
+      <div className="analytics-grid">
+        <section className="dashboard-panel trend-panel"><div className="panel-heading"><h2>Last 7 Days Sales Trend (INR)</h2><span>Live Analytics</span></div><div className="chart-area"><Line data={trendData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (context) => currency(context.raw) } } }, scales: { x: { grid: { display: false }, ticks: { color: "#9baec8" }, border: { color: "#282a39" } }, y: { beginAtZero: true, grid: { color: "rgba(63,65,84,.32)" }, ticks: { color: "#9baec8", callback: (value) => `₹${value}` }, border: { display: false } } } }} /></div></section>
+        <section className="dashboard-panel category-panel"><h2>Sales by Category</h2><div className="donut-area"><Doughnut data={categoryData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (context) => `${context.label}: ${currency(context.raw)}` } } } }} /><div className="donut-total"><strong>{currency(totalCategorySales)}</strong><small>Total Sales</small></div></div><div className="category-list">{analytics.categories.length ? analytics.categories.map((item, index) => <div key={item.category}><span><i style={{ backgroundColor: categoryColors[index % categoryColors.length] }} />{item.category} ({totalCategorySales ? Math.round((item.revenue / totalCategorySales) * 100) : 0}%)</span><strong>{currency(item.revenue)}</strong></div>) : <p>No category sales yet.</p>}</div></section>
       </div>
-
-      <div style={card}>
-        <h3>Total Bills</h3>
-        <h2>{stats.totalSales}</h2>
-      </div>
-
-      <div style={card}>
-        <h3>Revenue</h3>
-        <h2>₹{stats.revenue}</h2>
-      </div>
-
-      <div style={card}>
-        <h3>Expenses</h3>
-        <h2>₹{stats.expenses}</h2>
-      </div>
-
-      <div style={card}>
-        <h3>Profit</h3>
-        <h2>
-          ₹{Number(stats.profit).toFixed(2)}
-        </h2>
-        <p>
-          {stats.profitPercentage}% Margin
-        </p>
-      </div>
-
-      <div style={card}>
-        <h3>Today's Sales</h3>
-        <h2>{stats.todaySales}</h2>
-      </div>
-
-      <div style={card}>
-        <h3>Today's Revenue</h3>
-        <h2>₹{stats.todayRevenue}</h2>
-      </div>
-
-      <div style={card}>
-        <h3>Today's Profit</h3>
-        <h2>₹{stats.todayProfit}</h2>
-      </div>
-
-      <div style={card}>
-        <h3>Low Stock Items</h3>
-        <h2>{stats.lowStockCount}</h2>
-      </div>
-    </div>
-
-    <h2>Revenue vs Profit</h2>
-
-    <div
-      style={{
-        width: "100%",
-        height: "450px",
-        border: "1px solid #444",
-        borderRadius: "10px",
-        padding: "20px",
-        marginBottom: "30px",
-        boxShadow:
-          "0 0 10px rgba(255,255,255,0.1)"
-      }}
-    >
-      <Line
-        data={chartData}
-        options={options}
-      />
-    </div>
-
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: "20px"
-      }}
-    >
-      <div
-        style={{
-          border: "1px solid #444",
-          borderRadius: "10px",
-          padding: "20px",
-          boxShadow:
-            "0 0 10px rgba(255,255,255,0.1)"
-        }}
-      >
-        <h2>Top Selling Products</h2>
-
-        {topProducts.length === 0 ? (
-          <p>No Sales Yet</p>
-        ) : (
-          topProducts.map(
-            (product, index) => (
-              <div
-                key={index}
-                style={{
-                  marginBottom: "10px"
-                }}
-              >
-                {index + 1}. {product.name}
-                {" - "}
-                {product.total_sold} sold
-              </div>
-            )
-          )
-        )}
-      </div>
-
-      <div
-        style={{
-          border: "1px solid #444",
-          borderRadius: "10px",
-          padding: "20px",
-          boxShadow:
-            "0 0 10px rgba(193,243,14,0.1)"
-        }}
-      >
-        <h2>Low Stock Alerts</h2>
-
-        {lowStock.length === 0 ? (
-          <p>No Low Stock Products</p>
-        ) : (
-          lowStock.map((product) => (
-            <div
-              key={product.id}
-              style={{
-                marginBottom: "10px"
-              }}
-            >
-              ⚠ {product.name}
-              {" - Stock: "}
-              {product.stock}
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  </div>
-);
+      <section className="dashboard-panel stock-panel"><div className="panel-heading"><h2><FaExclamationTriangle /> Inventory &amp; Stock Alerts</h2><span className="restock-badge">Needs Restocking</span></div><div className="stock-table-wrap"><table className="stock-table"><thead><tr><th>Product Code</th><th>Product Name</th><th>Category</th><th>Size</th><th>Color</th><th>Min Stock</th><th>Current Stock</th></tr></thead><tbody>{lowStock.length ? lowStock.map((product) => <tr key={product.id}><td>{product.code || "—"}</td><td>{product.name}</td><td>{product.category || "—"}</td><td><span className="size-tag">{product.size || "Free Size"}</span></td><td>{product.color || "—"}</td><td>{product.min_stock || 0} pcs</td><td className="current-stock">{product.stock} pcs</td></tr>) : <tr><td colSpan="7" className="no-stock">All products are above their minimum stock level.</td></tr>}</tbody></table></div></section>
+    </main>
+  </section>;
 }
 
+function Metric({ label, value, icon, variant }) { return <section className="metric-card"><div><p>{label}</p><strong>{value}</strong></div><i className={`metric-icon ${variant}`}>{icon}</i></section>; }
 export default Dashboard;

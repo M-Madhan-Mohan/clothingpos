@@ -373,6 +373,10 @@
 
 /* ================= BARCODE ================= */
 
+.barcode-preview-cell{color:#a984ff;cursor:pointer;font-weight:650}.barcode-preview-cell:hover{color:#d2bfff;text-decoration:underline}
+.barcode-preview-modal{width:min(450px,calc(100vw - 32px));padding:26px 25px;background:#151928;border:1px solid #343a52;border-radius:17px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.barcode-preview-modal h2{font-size:20px}.barcode-preview-stage{display:grid;place-items:center;padding:30px;background:#282828}.barcode-label{width:220px;min-height:212px;display:flex;flex-direction:column;align-items:center;padding:15px 12px;background:#fff;color:#050505;border-radius:6px;text-align:center;font-family:Arial,sans-serif}.barcode-label>strong:first-child{font-size:13px}.barcode-label-product{margin-top:8px;font-size:12px}.barcode-label-details{display:flex;gap:18px;margin-top:8px;font-size:10px}.barcode-label-rule{width:100%;margin:7px 0 10px;border-top:1px dashed #bbb}.barcode-label svg{width:148px!important;height:46px!important}.barcode-label-number{font-size:11px;letter-spacing:1px}.barcode-label-mrp{margin-top:11px;font-size:14px}.barcode-label small{margin-top:7px;color:#666;font-size:8px}.barcode-preview-actions{display:flex;align-items:center;gap:10px;margin-top:16px}.barcode-preview-actions span{flex:1;color:#b1b8c9;font-size:12px;line-height:1.45}.barcode-preview-actions button{min-width:78px;height:46px;border:1px solid #383f56;border-radius:8px;background:#22283a;color:#fff;font-weight:700;cursor:pointer}.barcode-preview-actions .barcode-print-label{border-color:#8b5cf6;background:#7c3aed}.barcode-preview-actions .barcode-print-label:hover{background:#6d28d9}
+
 .barcode-modal{
     width:520px;
     background:#151928;
@@ -401,3 +405,5 @@
 .table-row:hover{
     background:#1d2235;
 }
+
+@media print{body *{visibility:hidden!important}.barcode-preview-overlay,.barcode-preview-overlay *{visibility:visible!important}.barcode-preview-overlay{position:absolute!important;inset:0!important;display:block!important;background:#fff!important}.barcode-preview-modal{width:100%!important;padding:0!important;border:0!important;box-shadow:none!important;background:#fff!important}.barcode-preview-modal .modal-header,.barcode-preview-actions{display:none!important}.barcode-preview-stage{padding:0!important;background:#fff!important}.barcode-label{margin:0!important;width:50mm!important;height:25mm!important;min-height:25mm!important;border-radius:0!important;transform:none!important}}

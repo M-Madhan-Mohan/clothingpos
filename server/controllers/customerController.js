@@ -16,8 +16,9 @@ const addCustomer = (req, res) => {
       if (err)
         return res.status(500).json(err);
 
-      res.json({
-        message: "Customer Added"
+      res.status(201).json({
+        message: "Customer Added",
+        customerId: result.insertId
       });
     }
   );
@@ -50,8 +51,24 @@ const deleteCustomer = (req, res) => {
     }
   );
 };
+
+const updateCustomer = (req, res) => {
+  const { id } = req.params;
+  const { customer_name, phone, address } = req.body;
+
+  db.query(
+    `UPDATE customers SET customer_name = ?, phone = ?, address = ? WHERE id = ?`,
+    [customer_name, phone, address, id],
+    (err, result) => {
+      if (err) return res.status(500).json(err);
+
+      res.json({ message: "Customer Updated" });
+    }
+  );
+};
 module.exports = {
   addCustomer,
   getCustomers,
-  deleteCustomer
+  deleteCustomer,
+  updateCustomer
 };
