@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FaBolt, FaChartPie, FaKeyboard, FaMoon, FaReceipt, FaTshirt, FaSignOutAlt, FaSun, FaTags, FaTools, FaUsers } from "react-icons/fa";
+import { FaBolt, FaChartPie, FaKeyboard, FaMoon, FaReceipt, FaTshirt, FaSignOutAlt, FaSun, FaTags, FaTools, FaUsers, FaWallet } from "react-icons/fa";
 import Products from "./pages/Products";
 import Dashboard from "./pages/Dashboard";
 import Sales from "./pages/Sales";
@@ -8,6 +8,7 @@ import Login from "./pages/Login";
 import POSTerminal from "./pages/POSTerminal";
 import BarcodePrinter from "./pages/BarcodePrinter";
 import StoreSettings from "./pages/StoreSettings";
+import Expenses from "./pages/Expenses";
 import "./styles/app-shell.css";
 
 const navItems = [
@@ -18,7 +19,7 @@ const navItems = [
 ];
 
 function App() {
-  const [page, setPage] = useState("pos");
+  const [page, setPage] = useState(() => localStorage.getItem("rs9-page") || "pos");
   const [theme, setTheme] = useState(() => localStorage.getItem("rs9-theme") || "dark");
   const [user, setUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem("user")) || null; } catch { return null; }
@@ -28,6 +29,10 @@ function App() {
     localStorage.setItem("rs9-theme", theme);
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem("rs9-page", page);
+  }, [page]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -45,7 +50,7 @@ function App() {
   const items = [
     ...navItems,
     ...(!isStaff ? [{ key: "customers", label: "Customers", icon: FaUsers }] : []),
-    ...(!isStaff ? [{ key: "barcode", label: "Barcode Labels", icon: FaTags }, { key: "settings", label: "Store Settings", icon: FaTools }] : [])
+    ...(!isStaff ? [{ key: "barcode", label: "Barcode Labels", icon: FaTags }, { key: "settings", label: "Store Settings", icon: FaTools }, { key: "expenses", label: "Expenses", icon: FaWallet }] : [])
   ];
   const title = items.find((item) => item.key === page)?.label || "POS Terminal";
   const logout = () => { localStorage.removeItem("user"); setUser(null); setPage("pos"); };
@@ -72,6 +77,7 @@ function App() {
         {page === "customers" && !isStaff && <Customers />}
         {page === "barcode" && !isStaff && <BarcodePrinter />}
         {page === "settings" && !isStaff && <StoreSettings />}
+        {page === "expenses" && !isStaff && <Expenses />}
       </main>
     </section>
   </div>;

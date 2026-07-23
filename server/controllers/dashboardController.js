@@ -13,7 +13,7 @@ const getStats = (req, res) => {
       (SELECT IFNULL(SUM(grand_total),0)
        FROM transactions) AS revenue,
 
-      (SELECT IFNULL(SUM(amount),0)
+      (SELECT IFNULL(SUM(rent + electricity + staff_salary),0)
        FROM expenses) AS expenses,
 
       (SELECT COUNT(*)

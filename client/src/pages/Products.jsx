@@ -12,6 +12,91 @@ import {
 } from "react-icons/fa";
 
 import "../styles/products.css";
+
+const colorNameMap = {
+  black: "#000000",
+  white: "#ffffff",
+  red: "#ff0000",
+  orange: "#ffa500",
+  yellow: "#ffff00",
+  green: "#008000",
+  blue: "#0000ff",
+  navy: "#000080",
+  purple: "#800080",
+  magenta: "#ff00ff",
+  pink: "#ffc0cb",
+  brown: "#a52a2a",
+  gray: "#808080",
+  silver: "#c0c0c0",
+  olive: "#808000",
+  teal: "#008080",
+  lime: "#00ff00",
+  aqua: "#00ffff",
+  coral: "#ff7f50",
+  gold: "#ffd700",
+  indigo: "#4b0082",
+  violet: "#ee82ee",
+  beige: "#f5f5dc",
+  tan: "#d2b48c",
+  salmon: "#fa8072",
+  mint: "#98ff98",
+  lavender: "#e6e6fa",
+  peach: "#ffe5b4",
+  chocolate: "#d2691e",
+  crimson: "#dc143c",
+  forestgreen: "#228b22",
+  khaki: "#f0e68c",
+  plum: "#dda0dd",
+  sienna: "#a0522d",
+  turquoise: "#40e0d0",
+  slategray: "#708090",
+  midnightblue: "#191970"
+};
+
+const hexToName = Object.fromEntries(
+  Object.entries(colorNameMap).map(([name, hex]) => [hex.toLowerCase(), name.charAt(0).toUpperCase() + name.slice(1)])
+);
+
+const normalizeHex = (hex) => {
+  const normalized = String(hex || "").trim().toLowerCase();
+  if (!normalized.startsWith("#")) return `#${normalized}`;
+  return normalized;
+};
+
+const getRgb = (hex) => {
+  const normalized = normalizeHex(hex).replace("#", "");
+  const r = parseInt(normalized.substring(0, 2), 16);
+  const g = parseInt(normalized.substring(2, 4), 16);
+  const b = parseInt(normalized.substring(4, 6), 16);
+  return { r, g, b };
+};
+
+const getDistance = (a, b) =>
+  Math.sqrt((a.r - b.r) ** 2 + (a.g - b.g) ** 2 + (a.b - b.b) ** 2);
+
+const getClosestColorName = (hex) => {
+  const normalizedHex = normalizeHex(hex);
+  if (hexToName[normalizedHex]) return hexToName[normalizedHex];
+  const target = getRgb(normalizedHex);
+  let nearest = "Custom";
+  let smallestDistance = Infinity;
+  for (const [name, colorHex] of Object.entries(colorNameMap)) {
+    const distance = getDistance(target, getRgb(colorHex));
+    if (distance < smallestDistance) {
+      smallestDistance = distance;
+      nearest = name.charAt(0).toUpperCase() + name.slice(1);
+    }
+  }
+  return nearest;
+};
+
+const getHexFromName = (name) => {
+  if (!name) return "#7c3aed";
+  const normalized = String(name || "").trim().toLowerCase();
+  if (normalized.startsWith("#")) return normalizeHex(normalized);
+  return colorNameMap[normalized] || "#7c3aed";
+};
+
 function Products({ readOnly = false }) {
   const [products, setProducts] = useState([]);
 
@@ -48,6 +133,9 @@ useState("");
 
 const [color, setColor] =
 useState("");
+
+const [colorHex, setColorHex] =
+useState("#7c3aed");
 
 const [hsnCode, setHsnCode] =
 useState("");
@@ -125,10 +213,7 @@ setCategory("MENS");
 setBrand("");
 setSize("");
 setColor("");
-setHsnCode("");
-setCostPrice("");
-setMrp("");
-setSellingPrice("");
+setColorHex("#7c3aed");
 setGstRate("12");
 setStock("");
 setMinStock("");
@@ -344,21 +429,47 @@ setBrand(e.target.value)
 }
 />
 
-<input
-placeholder="Size"
+<select
 value={size}
 onChange={(e)=>
 setSize(e.target.value)
 }
+>
+<option value="">Select Size</option>
+<option value="S">S</option>
+<option value="M">M</option>
+<option value="L">L</option>
+<option value="XL">XL</option>
+<option value="2XL">2XL</option>
+<option value="3XL">3XL</option>
+<option value="4XL">4XL</option>
+</select>
+
+<div className="color-picker-row">
+<div className="color-picker-wrapper">
+<label htmlFor="colorPlate">Color Plate</label>
+<input
+id="colorPlate"
+type="color"
+value={colorHex}
+onChange={(e)=>{
+  const nextHex = e.target.value;
+  setColorHex(nextHex);
+  setColor(getClosestColorName(nextHex));
+}}
 />
+</div>
 
 <input
-placeholder="Color"
+placeholder="Color Name"
 value={color}
-onChange={(e)=>
-setColor(e.target.value)
-}
+onChange={(e)=>{
+  const nextColor = e.target.value;
+  setColor(nextColor);
+  setColorHex(getHexFromName(nextColor));
+}}
 />
+</div>
 
 <input
 placeholder="HSN Code"
@@ -578,20 +689,16 @@ HSN: {product.hsn_code || "-"}
 
 </div>
 
-<div>
-
-<div className="size-chip">
-
-{product.size}
-
-</div>
-
-<div className="color-text">
-
-{product.color}
-
-</div>
-
+<div className="product-variant-cell">
+  <span className="color-dot" style={{ backgroundColor: getHexFromName(product.color) }} />
+  <div>
+    <div className="size-chip">
+      {product.size}
+    </div>
+    <div className="color-text">
+      {product.color}
+    </div>
+  </div>
 </div>
 
 <div>
@@ -689,6 +796,7 @@ setBrand(product.brand);
 setSize(product.size);
 
 setColor(product.color);
+setColorHex(getHexFromName(product.color));
 
 setHsnCode(product.hsn_code);
 
