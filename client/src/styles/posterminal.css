@@ -427,6 +427,8 @@ border-radius:12px;
 
 margin-bottom:15px;
 
+border:1px solid #2d3559;
+
 }
 
 .cart-info{
@@ -437,15 +439,25 @@ justify-content:space-between;
 
 align-items:flex-start;
 
+gap:10px;
+
+}
+
+.cart-info > div:first-child{
+  flex:1;
 }
 
 .cart-price{
 
-font-size:18px;
+font-size:16px;
 
 font-weight:bold;
 
 color:#8b5cf6;
+
+text-align:right;
+
+white-space:nowrap;
 
 }
 
@@ -463,9 +475,9 @@ margin-top:15px;
 
 .cart-actions button{
 
-width:34px;
+width:36px;
 
-height:34px;
+height:36px;
 
 border:none;
 
@@ -477,6 +489,14 @@ color:white;
 
 cursor:pointer;
 
+font-weight:600;
+
+}
+
+.cart-actions button:hover{
+
+background:#3d4569;
+
 }
 
 .delete-btn{
@@ -486,8 +506,18 @@ margin-left:auto;
 background:#ef4444 !important;
 
 }
+
+.delete-btn:hover{
+
+background:#dc2626 !important;
+
+}
 .summary{
     margin-top:20px;
+    background:#1a2342;
+    padding:15px;
+    border-radius:10px;
+    border:1px solid #2d3559;
 }
 
 .summary-row{
@@ -495,27 +525,42 @@ background:#ef4444 !important;
     justify-content:space-between;
     margin-bottom:12px;
     color:white;
+    font-size:14px;
+}
+
+.summary-row span:last-child{
+    font-weight:600;
+    color:#8b5cf6;
 }
 
 .grand-total{
     display:flex;
     justify-content:space-between;
     align-items:center;
-    margin-top:20px;
+    margin-top:15px;
+    padding-top:15px;
+    border-top:2px solid #3a4563;
+}
+
+.grand-total span:first-child{
+    font-size:16px;
+    font-weight:600;
 }
 
 .grand-total h2{
     color:#7c3aed;
     margin:0;
+    font-size:24px;
 }
 .discount-input{
-width:60px;
-height:28px;
+width:70px;
+height:34px;
 border:none;
 background:#24283b;
 color:white;
 text-align:center;
 border-radius:6px;
+font-weight:600;
 }
 
 .cart-actions{

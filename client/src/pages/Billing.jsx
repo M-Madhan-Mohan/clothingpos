@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
+import "../styles/billing.css";
 
 function Billing() {
   const [barcode, setBarcode] = useState("");
@@ -72,6 +73,7 @@ function Billing() {
           {
             ...scannedProduct,
             quantity: 1,
+            discountPercent: 0,
           },
         ]);
       }
@@ -121,6 +123,7 @@ function Billing() {
         {
           ...product,
           quantity: 1,
+          discountPercent: 0,
         },
       ];
     });
@@ -209,20 +212,41 @@ function Billing() {
     const receiptWindow = window.open("", "_blank");
     if (!receiptWindow) return;
 
+    const itemsHTML = cart
+      .map((item) => {
+        const itemSubtotal = item.quantity * Number(item.selling_price);
+        const discountAmt = (itemSubtotal * Number(item.discountPercent || 0)) / 100;
+        const taxable = itemSubtotal - discountAmt;
+        return `<p><strong>${item.name}</strong><br>Size: ${item.size || "Free Size"} | Color: ${item.color || "N/A"}<br>Qty: ${item.quantity} x ₹${item.selling_price} = ₹${taxable.toFixed(2)} (${item.discountPercent || 0}% off)</p>`;
+      })
+      .join("");
+
     receiptWindow.document.write(`
       <html>
         <head>
           <title>Receipt</title>
+          <style>
+            body { font-family: Arial; padding: 20px; }
+            h1 { text-align: center; }
+            .summary { margin-top: 20px; border-top: 2px solid #000; padding-top: 10px; }
+            .summary-row { display: flex; justify-content: space-between; margin: 8px 0; }
+          </style>
         </head>
         <body>
-          <h1>Clothing POS</h1>
+          <h1>Clothing POS Receipt</h1>
           <p><strong>Customer:</strong> ${customerName}</p>
+          <p><strong>Mobile:</strong> ${customerMobile}</p>
           <hr>
-          ${cart
-            .map((item) => `<p>${item.name} x ${item.quantity} - ₹${item.selling_price}</p>`)
-            .join("")}
-          <hr>
-          <h2>Total: ₹${total}</h2>
+          ${itemsHTML}
+          <div class="summary">
+            <div class="summary-row"><span>Subtotal (Taxable):</span><span>₹${subtotal.toFixed(2)}</span></div>
+            ${discountAmount > 0 ? `<div class="summary-row"><span>Discount Applied:</span><span>-₹${discountAmount.toFixed(2)}</span></div>` : ""}
+            <div class="summary-row"><span>CGST (6%):</span><span>₹${cgstAmount.toFixed(2)}</span></div>
+            <div class="summary-row"><span>SGST (6%):</span><span>₹${sgstAmount.toFixed(2)}</span></div>
+            <div class="summary-row"><span>Total Tax:</span><span>₹${totalTaxAmount.toFixed(2)}</span></div>
+            <div class="summary-row" style="font-weight: bold; font-size: 16px;"><span>GRAND TOTAL:</span><span>₹${total.toFixed(2)}</span></div>
+          </div>
+          <p style="text-align: center; margin-top: 30px; font-weight: bold;">THANK YOU FOR YOUR PURCHASE!</p>
         </body>
       </html>
     `);
@@ -272,10 +296,23 @@ function Billing() {
     }
   };
 
-  const total = cart.reduce(
-    (sum, item) => sum + Number(item.selling_price || 0) * Number(item.quantity || 0),
-    0
-  );
+  const subtotal = cart.reduce((sum, item) => {
+    const itemSubtotal = Number(item.selling_price || 0) * Number(item.quantity || 0);
+    const discountAmount = (itemSubtotal * Number(item.discountPercent || 0)) / 100;
+    return sum + (itemSubtotal - discountAmount);
+  }, 0);
+
+  const cgstAmount = subtotal * 0.06;
+  const sgstAmount = subtotal * 0.06;
+  const totalTaxAmount = cgstAmount + sgstAmount;
+
+  const discountAmount = cart.reduce((sum, item) => {
+    const itemSubtotal = Number(item.selling_price || 0) * Number(item.quantity || 0);
+    const discountAmt = (itemSubtotal * Number(item.discountPercent || 0)) / 100;
+    return sum + discountAmt;
+  }, 0);
+
+  const total = subtotal + totalTaxAmount;
 
   useEffect(() => {
     axios
@@ -303,123 +340,219 @@ function Billing() {
   }, [selectedCustomer, customers]);
 
   return (
-    <div>
-      <h1>Billing Screen</h1>
-      <h2>Cart</h2>
-
-      {cart.map((item) => (
-        <div
-          key={item.id}
-          style={{
-            borderBottom: "1px solid gray",
-            padding: "8px",
-          }}
-        >
-          <strong>{item.name}</strong>
-
-          <button onClick={() => decreaseQty(item.id)} style={{ marginLeft: "10px" }}>
-            -
-          </button>
-
-          {item.quantity}
-
-          <button onClick={() => increaseQty(item.id)}>+</button>
-
-          {" | ₹"}
-          {item.selling_price}
-
-          {" | Total ₹"}
-          {item.quantity * Number(item.selling_price)}
-
-          <button onClick={() => removeFromCart(item.id)} style={{ marginLeft: "10px" }}>
-            Remove
-          </button>
-        </div>
-      ))}
-
-      <h2>Total: ₹{total}</h2>
-      <input
-        type="number"
-        placeholder="Paid Amount"
-        value={paidAmount}
-        onChange={(e) => setPaidAmount(e.target.value)}
-      />
-
-      <h3>Due Amount: ₹{total - (Number(paidAmount) || 0)}</h3>
-
-      <button onClick={saveBill} disabled={cart.length === 0}>
-        Save Bill
-      </button>
-
-      <button onClick={printReceipt}>Print Receipt</button>
-
-      <div style={{ marginTop: "12px" }}>
-        <select value={selectedCustomer} onChange={(e) => setSelectedCustomer(e.target.value)}>
-          <option value="">Select Existing Customer</option>
-          {customers.map((customer) => (
-            <option key={customer.id} value={customer.id}>
-              {customer.customer_name}
-            </option>
-          ))}
-        </select>
+    <div className="billing-container">
+      <div className="billing-header">
+        <h1>Billing Screen</h1>
       </div>
 
-      <div style={{ marginTop: "12px" }}>
-        <input
-          type="text"
-          placeholder="Customer Name"
-          value={customerNameInput}
-          onChange={(e) => setCustomerNameInput(e.target.value)}
-          style={{ marginRight: "8px" }}
-        />
-        <input
-          type="text"
-          placeholder="Phone Number"
-          value={customerPhoneInput}
-          onChange={(e) => setCustomerPhoneInput(e.target.value)}
-          style={{ marginRight: "8px" }}
-        />
-        <input
-          type="text"
-          placeholder="Address (optional)"
-          value={customerAddressInput}
-          onChange={(e) => setCustomerAddressInput(e.target.value)}
-        />
-      </div>
+      <div className="billing-layout">
+        <div className="billing-main">
+          <div className="search-section">
+            <input
+              type="text"
+              placeholder="Scan Barcode"
+              value={barcode}
+              onChange={(e) => setBarcode(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleBarcodeScan(barcode);
+                }
+              }}
+              className="barcode-input"
+            />
+            <button onClick={searchProduct} className="search-btn">
+              Search
+            </button>
+          </div>
 
-      <br />
-      <br />
-      <input
-        type="text"
-        placeholder="Scan Barcode"
-        value={barcode}
-        onChange={(e) => setBarcode(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            handleBarcodeScan(barcode);
-          }
-        }}
-      />
-
-      <button onClick={searchProduct}>Search</button>
-
-      {product && (
-        <div
-          style={{
-            border: "1px solid #ccc",
-            padding: "10px",
-            marginTop: "10px",
-          }}
-        >
-          <h3>{product.name}</h3>
-          <p>Barcode: {product.barcode}</p>
-          <p>Price: ₹{product.selling_price}</p>
-          <p>
-            Stock Left: {product.stock - (cart.find((item) => item.id === product.id)?.quantity || 0)}
-          </p>
-          <button onClick={addToCart}>Add To Cart</button>
+          {product && product.id && (
+            <div className="product-details">
+              <h3>{product.name}</h3>
+              <p>
+                <strong>Barcode:</strong> {product.barcode || "N/A"}
+              </p>
+              <p>
+                <strong>Price:</strong> ₹{product.selling_price}
+              </p>
+              <p>
+                <strong>Stock Left:</strong>{" "}
+                {(product.stock || 0) - (cart.find((item) => item.id === product.id)?.quantity || 0)}
+              </p>
+              <button onClick={addToCart} className="add-btn">
+                Add To Cart
+              </button>
+            </div>
+          )}
         </div>
-      )}
+
+        <div className="cart-panel">
+          <h2>🛒 Cart</h2>
+
+          {cart.length === 0 ? (
+            <div className="empty-cart">
+              <p>Cart is Empty</p>
+            </div>
+          ) : (
+            <>
+              {cart.map((item) => {
+                const itemSubtotal = item.quantity * Number(item.selling_price);
+                const discountAmt = (itemSubtotal * Number(item.discountPercent || 0)) / 100;
+                const itemTotal = itemSubtotal - discountAmt;
+
+                return (
+                  <div key={item.id} className="cart-item">
+                    <div className="cart-item-header">
+                      <div>
+                        <h4>{item.name}</h4>
+                        <small>
+                          Size: {item.size || "FREE"} | Color: {item.color || "N/A"}
+                        </small>
+                      </div>
+                      <div className="cart-item-price">
+                        <h4>₹{itemTotal.toFixed(2)}</h4>
+                        <small>+₹{(itemTotal * 0.12).toFixed(2)} Tax</small>
+                      </div>
+                    </div>
+
+                    <div className="cart-item-controls">
+                      <button
+                        onClick={() => decreaseQty(item.id)}
+                        className="qty-btn"
+                      >
+                        -
+                      </button>
+                      <span className="qty">{item.quantity}</span>
+                      <button
+                        onClick={() => increaseQty(item.id)}
+                        className="qty-btn"
+                      >
+                        +
+                      </button>
+                      <input
+                        type="number"
+                        placeholder="Disc%"
+                        value={item.discountPercent || 0}
+                        onChange={(e) =>
+                          setCart(
+                            cart.map((p) =>
+                              p.id === item.id
+                                ? {
+                                    ...p,
+                                    discountPercent: Math.min(100, Math.max(0, Number(e.target.value))),
+                                  }
+                                : p
+                            )
+                          )
+                        }
+                        className="discount-input"
+                        min="0"
+                        max="100"
+                      />
+                      <button
+                        onClick={() => removeFromCart(item.id)}
+                        className="delete-btn"
+                      >
+                        🗑
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </>
+          )}
+
+          <select
+            value={selectedCustomer}
+            onChange={(e) => setSelectedCustomer(e.target.value)}
+            className="customer-select"
+          >
+            <option value="">Select Existing Customer</option>
+            {customers.map((customer) => (
+              <option key={customer.id} value={customer.id}>
+                {customer.customer_name}
+              </option>
+            ))}
+          </select>
+
+          <div className="customer-inputs">
+            <input
+              type="text"
+              placeholder="Customer Name"
+              value={customerNameInput}
+              onChange={(e) => setCustomerNameInput(e.target.value)}
+            />
+            <input
+              type="text"
+              placeholder="Phone Number"
+              value={customerPhoneInput}
+              onChange={(e) => setCustomerPhoneInput(e.target.value)}
+            />
+            <input
+              type="text"
+              placeholder="Address (optional)"
+              value={customerAddressInput}
+              onChange={(e) => setCustomerAddressInput(e.target.value)}
+            />
+          </div>
+
+          <div className="summary">
+            <div className="summary-row">
+              <span>Subtotal (Taxable)</span>
+              <span>₹{subtotal.toFixed(2)}</span>
+            </div>
+
+            {discountAmount > 0 && (
+              <div className="summary-row">
+                <span>Discount Applied</span>
+                <span style={{ color: "#22c55e" }}>-₹{discountAmount.toFixed(2)}</span>
+              </div>
+            )}
+
+            <div className="summary-row">
+              <span>CGST (6%)</span>
+              <span>₹{cgstAmount.toFixed(2)}</span>
+            </div>
+
+            <div className="summary-row">
+              <span>SGST (6%)</span>
+              <span>₹{sgstAmount.toFixed(2)}</span>
+            </div>
+
+            <div className="summary-row">
+              <span>Total CGST + SGST Tax</span>
+              <span>₹{totalTaxAmount.toFixed(2)}</span>
+            </div>
+
+            <hr />
+
+            <div className="grand-total">
+              <span>Grand Total</span>
+              <h2>₹{total.toFixed(2)}</h2>
+            </div>
+          </div>
+
+          <input
+            type="number"
+            placeholder="Paid Amount"
+            value={paidAmount}
+            onChange={(e) => setPaidAmount(e.target.value)}
+            className="paid-input"
+          />
+
+          <h3 className="due-amount">
+            Due Amount: ₹{Math.max(0, total - (Number(paidAmount) || 0)).toFixed(2)}
+          </h3>
+
+          <div className="button-group">
+            <button onClick={saveBill} disabled={cart.length === 0} className="save-btn">
+              Save Bill
+            </button>
+            <button onClick={printReceipt} disabled={cart.length === 0} className="print-btn">
+              Print Receipt
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

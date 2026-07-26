@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { FaBolt, FaChartPie, FaKeyboard, FaMoon, FaReceipt, FaTshirt, FaSignOutAlt, FaSun, FaTags, FaTools, FaUsers, FaWallet } from "react-icons/fa";
+import { FaBolt, FaChartPie, FaKeyboard, FaMoon, FaReceipt, FaTshirt, FaSignOutAlt, FaSun, FaTags, FaTools, FaWallet } from "react-icons/fa";
 import Products from "./pages/Products";
 import Dashboard from "./pages/Dashboard";
 import Sales from "./pages/Sales";
-import Customers from "./pages/Customers";
 import Login from "./pages/Login";
 import POSTerminal from "./pages/POSTerminal";
 import BarcodePrinter from "./pages/BarcodePrinter";
@@ -49,7 +48,6 @@ function App() {
   const isStaff = String(user.role || "").toLowerCase() === "staff";
   const items = [
     ...navItems,
-    ...(!isStaff ? [{ key: "customers", label: "Customers", icon: FaUsers }] : []),
     ...(!isStaff ? [{ key: "barcode", label: "Barcode Labels", icon: FaTags }, { key: "settings", label: "Store Settings", icon: FaTools }, { key: "expenses", label: "Expenses", icon: FaWallet }] : [])
   ];
   const title = items.find((item) => item.key === page)?.label || "POS Terminal";
@@ -71,10 +69,9 @@ function App() {
       <header className="app-topbar"><div><p>RS9 EXPORTS / {isStaff ? "STAFF WORKSPACE" : "ADMIN WORKSPACE"}</p><h1>{title}</h1></div><div className="topbar-actions"><span className="shortcut-help"><FaKeyboard /> F1 POS · F7 Products</span><button className="theme-toggle" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}>{theme === "dark" ? <FaSun /> : <FaMoon />}<span>{theme === "dark" ? "Light" : "Dark"}</span></button></div></header>
       <main className="app-content">
         {page === "dashboard" && <Dashboard />}
-        {page === "pos" && <POSTerminal />}
+        {page === "pos" && <POSTerminal user={user} onStaffChange={setUser} />}
         {page === "products" && <Products readOnly={isStaff} />}
         {page === "sales" && <Sales />}
-        {page === "customers" && !isStaff && <Customers />}
         {page === "barcode" && !isStaff && <BarcodePrinter />}
         {page === "settings" && !isStaff && <StoreSettings />}
         {page === "expenses" && !isStaff && <Expenses />}

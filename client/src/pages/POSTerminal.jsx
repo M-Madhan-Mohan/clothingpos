@@ -17,10 +17,9 @@ import {
 import "../styles/posterminal.css";
 const STORE_SETTINGS_KEY = "clothing-pos-store-settings";
 const DEFAULT_STORE = { storeName: "RS9 EXPORTS", storeAddress: "RAINTECH BUILDING, VADAYAR PO, KOTTAYAM, KERALA", contactNumber: "+91 8078311945", gstin: "32AAAAA1111A1Z1" };
-const POSTerminal = () => {
+const POSTerminal = ({ user, onStaffChange }) => {
 
 const [products, setProducts] = useState([]);
-const [customers, setCustomers] = useState([]);
 
 const [cart, setCart] = useState([]);
 
@@ -36,18 +35,17 @@ const scannerControlsRef = useRef(null);
 const [category, setCategory] =
   useState("ALL");
 
-const [selectedCustomer, setSelectedCustomer] =
-  useState("");
-
 const [paymentMode, setPaymentMode] =
   useState("Cash");
 
 const [cashReceived, setCashReceived] =
   useState("");
 
-const [customerNameInput, setCustomerNameInput] = useState("");
-const [customerPhoneInput, setCustomerPhoneInput] = useState("");
-const [customerAddressInput, setCustomerAddressInput] = useState("");
+const [showStaffAccess, setShowStaffAccess] = useState(false);
+const [staffEmail, setStaffEmail] = useState("");
+const [staffPassword, setStaffPassword] = useState("");
+const [staffAccessError, setStaffAccessError] = useState("");
+const [isVerifyingStaff, setIsVerifyingStaff] = useState(false);
 
 const [showCheckout, setShowCheckout] =
   useState(false);
@@ -85,7 +83,6 @@ const removeItem = (id) => {
 
   useEffect(() => {
     loadProducts();
-    loadCustomers();
   }, []);
 
   const loadProducts = async () => {
@@ -95,18 +92,6 @@ const removeItem = (id) => {
       );
 
       setProducts(res.data);
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
-  const loadCustomers = async () => {
-    try {
-      const res = await axios.get(
-        "http://localhost:5000/api/customers"
-      );
-
-      setCustomers(res.data);
     } catch (error) {
       console.log(error);
     }
@@ -137,7 +122,7 @@ const addToCart = (product) => {
         {
           ...product,
           qty: 1,
-          discount: 0
+          discountPercent: 0
         }
       ];
     });
@@ -149,19 +134,14 @@ const addToCart = (product) => {
     scannerStreamRef.current?.getTracks().forEach((track) => track.stop());
     scannerStreamRef.current = null;
     setShowScanner(false);
+    setScannerMessage("");
   };
 
   useEffect(() => {
     if (!showScanner) return undefined;
     let isActive = true;
-    let frameId;
 
     const startScanner = async () => {
-      if (!navigator.mediaDevices?.getUserMedia) {
-        setScannerMessage("Camera access is not available on this device.");
-        return;
-      }
-
       try {
         setScannerMessage("Point the camera at a product barcode.");
         const video = scannerVideoRef.current;
@@ -182,10 +162,7 @@ const addToCart = (product) => {
             setScannerMessage(`Barcode ${barcode} was not found in your products.`);
           }
         );
-        if (!isActive) {
-          controls.stop();
-          return;
-        }
+        if (!isActive) return controls.stop();
         scannerControlsRef.current = controls;
       } catch (error) {
         setScannerMessage(error.name === "NotAllowedError" ? "Camera permission was denied. Allow camera access and try again." : "Unable to start the camera. Check that it is not being used by another app.");
@@ -195,13 +172,34 @@ const addToCart = (product) => {
     startScanner();
     return () => {
       isActive = false;
-      cancelAnimationFrame(frameId);
       scannerControlsRef.current?.stop();
       scannerControlsRef.current = null;
       scannerStreamRef.current?.getTracks().forEach((track) => track.stop());
       scannerStreamRef.current = null;
     };
-  }, [showScanner, products, cart]);
+  }, [showScanner, products]);
+
+  const changeStaff = async (event) => {
+    event.preventDefault();
+    setStaffAccessError("");
+    setIsVerifyingStaff(true);
+    try {
+      const response = await axios.post("http://localhost:5000/api/auth/login", {
+        email: staffEmail,
+        password: staffPassword,
+        role: "staff"
+      });
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+      onStaffChange(response.data.user);
+      setShowStaffAccess(false);
+      setStaffEmail("");
+      setStaffPassword("");
+    } catch (error) {
+      setStaffAccessError(error.response?.data?.message || "Staff access could not be verified.");
+    } finally {
+      setIsVerifyingStaff(false);
+    }
+  };
 
   const increaseQty = (id) => {
     setCart((prevCart) =>
@@ -242,19 +240,23 @@ const addToCart = (product) => {
     setCart([]);
   };
 
-const subtotal = cart.reduce(
-  (sum, item) => sum + (Number(item.qty || 0) * Number(item.selling_price || 0)) - Number(item.discount || 0),
-  0
-);
+const subtotal = cart.reduce((sum, item) => {
+  const itemSubtotal = Number(item.qty || 0) * Number(item.selling_price || 0);
+  const discountAmount = (itemSubtotal * Number(item.discountPercent || 0)) / 100;
+  return sum + (itemSubtotal - discountAmount);
+}, 0);
 
-const gstAmount = subtotal * 0.12;
+const cgstAmount = subtotal * 0.06;
+const sgstAmount = subtotal * 0.06;
+const totalTaxAmount = cgstAmount + sgstAmount;
 
-const discountAmount = cart.reduce(
-  (sum, item) => sum + Number(item.discount || 0),
-  0
-);
+const discountAmount = cart.reduce((sum, item) => {
+  const itemSubtotal = Number(item.qty || 0) * Number(item.selling_price || 0);
+  const discountAmt = (itemSubtotal * Number(item.discountPercent || 0)) / 100;
+  return sum + discountAmt;
+}, 0);
 
-const grandTotal = subtotal + gstAmount;
+const grandTotal = subtotal + totalTaxAmount;
 
 const printReceipt = (bill = invoiceData) => {
   if (!bill) return;
@@ -263,10 +265,12 @@ const printReceipt = (bill = invoiceData) => {
   const money = (amount) => `&#8377;${Number(amount || 0).toFixed(2)}`;
   const safe = (value = "") => String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const rows = bill.items.map((item) => {
-    const taxable = item.qty * Number(item.selling_price) - Number(item.discount || 0);
+    const itemSubtotal = item.qty * Number(item.selling_price);
+    const discountAmt = (itemSubtotal * Number(item.discountPercent || 0)) / 100;
+    const taxable = itemSubtotal - discountAmt;
     return `<tr><td><b>${safe(item.name)}</b><small>Size: ${safe(item.size || "Free Size")} | Color: ${safe(item.color || "N/A")} | GST ${item.gst_rate || 12}%</small></td><td class="right">${item.qty} x ${money(item.selling_price)}</td><td class="right">${money(taxable * 1.12)}</td></tr>`;
   }).join("");
-  receiptWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${safe(bill.invoiceNo)}</title><style>@page{size:80mm auto;margin:4mm}*{box-sizing:border-box}body{margin:0;font:11px Arial;color:#111}.receipt{width:72mm;margin:auto}.center{text-align:center}h1{font-size:16px;margin:0 0 7px}p{line-height:1.45;margin:3px 0}.rule{border:0;border-top:1px dashed #111;margin:10px 0}table{width:100%;border-collapse:collapse}th{text-align:left;padding-bottom:6px;border-bottom:1px dashed #111}td{padding:7px 0;vertical-align:top;border-bottom:1px dotted #999}small{display:block;color:#555;margin-top:3px;line-height:1.35}.right{text-align:right;white-space:nowrap;padding-left:5px}.totals div{display:flex;justify-content:space-between;padding:4px 0}.total{font-size:14px;font-weight:700;border-top:1px dashed #111;border-bottom:1px dashed #111;margin-top:5px;padding:9px 0!important}.thanks{text-align:center;font-weight:700;margin-top:14px}</style></head><body><main class="receipt"><header class="center"><h1>${safe(bill.store.storeName)}</h1><p>${safe(bill.store.storeAddress)}</p><p>GSTIN: ${safe(bill.store.gstin || "N/A")} | Ph: ${safe(bill.store.contactNumber || "N/A")}</p></header><hr class="rule"><p><b>Invoice:</b> ${safe(bill.invoiceNo)}<br><b>Date:</b> ${new Date(bill.date).toLocaleString("en-IN")}<br><b>Customer:</b> ${safe(bill.customer)}${bill.mobile ? ` (${safe(bill.mobile)})` : ""}<br><b>Payment:</b> ${safe(bill.payment)}</p><hr class="rule"><table><thead><tr><th>Item Description</th><th class="right">Qty/Price</th><th class="right">Total</th></tr></thead><tbody>${rows}</tbody></table><section class="totals"><div><span>Subtotal (Taxable)</span><span>${money(bill.subtotal)}</span></div>${bill.discountAmount > 0 ? `<div><span>Discount</span><span>-${money(bill.discountAmount)}</span></div>` : ""}<div><span>GST Amount</span><span>${money(bill.gst)}</span></div><div class="total"><span>GRAND TOTAL (${safe(bill.payment)})</span><span>${money(bill.total)}</span></div></section><p class="thanks">*** THANK YOU! VISIT AGAIN ***</p></main></body></html>`);
+  receiptWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${safe(bill.invoiceNo)}</title><style>@page{size:80mm auto;margin:4mm}*{box-sizing:border-box}body{margin:0;font:11px Arial;color:#111}.receipt{width:72mm;margin:auto}.center{text-align:center}h1{font-size:16px;margin:0 0 7px}p{line-height:1.45;margin:3px 0}.rule{border:0;border-top:1px dashed #111;margin:10px 0}table{width:100%;border-collapse:collapse}th{text-align:left;padding-bottom:6px;border-bottom:1px dashed #111}td{padding:7px 0;vertical-align:top;border-bottom:1px dotted #999}small{display:block;color:#555;margin-top:3px;line-height:1.35}.right{text-align:right;white-space:nowrap;padding-left:5px}.totals div{display:flex;justify-content:space-between;padding:4px 0}.total{font-size:14px;font-weight:700;border-top:1px dashed #111;border-bottom:1px dashed #111;margin-top:5px;padding:9px 0!important}.thanks{text-align:center;font-weight:700;margin-top:14px}</style></head><body><main class="receipt"><header class="center"><h1>${safe(bill.store.storeName)}</h1><p>${safe(bill.store.storeAddress)}</p><p>GSTIN: ${safe(bill.store.gstin || "N/A")} | Ph: ${safe(bill.store.contactNumber || "N/A")}</p></header><hr class="rule"><p><b>Invoice:</b> ${safe(bill.invoiceNo)}<br><b>Date:</b> ${new Date(bill.date).toLocaleString("en-IN")}<br><b>Customer:</b> ${safe(bill.customer)}${bill.mobile ? ` (${safe(bill.mobile)})` : ""}<br><b>Payment:</b> ${safe(bill.payment)}</p><hr class="rule"><table><thead><tr><th>Item Description</th><th class="right">Qty/Price</th><th class="right">Total</th></tr></thead><tbody>${rows}</tbody></table><section class="totals"><div><span>Subtotal (Taxable)</span><span>${money(bill.subtotal)}</span></div>${bill.discountAmount > 0 ? `<div><span>Discount Applied</span><span>-${money(bill.discountAmount)}</span></div>` : ""}<div><span>CGST (6%)</span><span>${money(bill.cgst)}</span></div><div><span>SGST (6%)</span><span>${money(bill.sgst)}</span></div><div><span>Total Tax</span><span>${money(bill.gst)}</span></div><div class="total"><span>GRAND TOTAL (${safe(bill.payment)})</span><span>${money(bill.total)}</span></div></section><p class="thanks">*** THANK YOU! VISIT AGAIN ***</p></main></body></html>`);
   receiptWindow.document.close();
   receiptWindow.focus();
   setTimeout(() => receiptWindow.print(), 300);
@@ -277,7 +281,6 @@ const closeReceipt = () => {
   setShowCheckout(false);
   setInvoiceData(null);
   setCart([]);
-  setSelectedCustomer("");
   setPaymentMode("Cash");
   setCashReceived("");
 };
@@ -297,29 +300,6 @@ const saveBill = async () => {
 }
 
   try {
-    const customer = customers.find((c) => c.id == selectedCustomer);
-
-    let usedCustomer = customer;
-    if (!usedCustomer && (customerNameInput.trim() || customerPhoneInput.trim())) {
-      try {
-        const createRes = await axios.post("http://localhost:5000/api/customers/add", {
-          customer_name: customerNameInput.trim() || "Walk-in Customer",
-          phone: customerPhoneInput.trim(),
-          address: customerAddressInput.trim()
-        });
-
-        await loadCustomers();
-        usedCustomer = {
-          id: createRes.data.customerId,
-          customer_name: customerNameInput.trim() || "Walk-in Customer",
-          phone: customerPhoneInput.trim(),
-          address: customerAddressInput.trim()
-        };
-      } catch (err) {
-        console.log("Failed to create customer:", err);
-      }
-    }
-
     const response = await axios.post("http://localhost:5000/api/sales/save", {
       total: grandTotal,
       cart: cart.map((item) => ({
@@ -331,8 +311,8 @@ const saveBill = async () => {
         selling_price: item.selling_price,
         gst_rate: item.gst_rate || 0
       })),
-      customerName: usedCustomer?.customer_name || "Walk-in Customer",
-      customerMobile: usedCustomer?.phone || "",
+      customerName: "Walk-in Customer",
+      customerMobile: "",
       paymentMode
     });
 
@@ -345,13 +325,14 @@ const saveBill = async () => {
     }
       setInvoiceData({
   invoiceNo,
-      customer: usedCustomer?.customer_name || customer?.customer_name || "Walk-in Customer",
-      mobile: usedCustomer?.phone || customer?.phone || "",
+      staff: user?.name || user?.username || user?.email || "Staff Member",
   payment: paymentMode,
   date: new Date(),
   items: cart,
   subtotal,
-  gst: gstAmount,
+  cgst: cgstAmount,
+  sgst: sgstAmount,
+  gst: totalTaxAmount,
   discountAmount,
   total: grandTotal,
   store
@@ -359,11 +340,6 @@ const saveBill = async () => {
 
 setShowCheckout(false);
 setShowInvoice(true);
-
-  // clear customer inputs after saving
-  setCustomerNameInput("");
-  setCustomerPhoneInput("");
-  setCustomerAddressInput("");
 
     /* const receiptWindow =
       window.open("", "_blank");
@@ -456,7 +432,6 @@ Discount:
     }, 500); */
 
   setCart([]);
-setSelectedCustomer("");
 setPaymentMode("Cash");
 setCashReceived("");
 setShowCheckout(false);
@@ -504,6 +479,10 @@ RS9 Sales Terminal
 </span>
 
 </div>
+
+<button className="camera-btn" type="button" onClick={() => { setStaffAccessError(""); setShowStaffAccess(true); }}>
+Change Staff
+</button>
 
 </div>
 
@@ -733,35 +712,6 @@ Items
 
 </div>
 
-<select
-className="customer-select"
-value={selectedCustomer}
-onChange={(e)=>
-setSelectedCustomer(
-e.target.value
-)
-}
->
-
-<option value="">
-Walk-in Customer
-</option>
-
-{customers.map(customer=>(
-
-<option
-key={customer.id}
-value={customer.id}
->
-
-{customer.customer_name}
-
-</option>
-
-))}
-
-</select>
-
 {cart.length===0?
 
 (
@@ -815,15 +765,16 @@ Size :
 <h4>
 ₹
 {(
-(item.qty * item.selling_price) -
-(item.discount || 0)
+  (item.qty * item.selling_price) -
+  ((item.qty * item.selling_price) * (item.discountPercent || 0) / 100)
 ).toFixed(2)}
 </h4>
 
 <small>
 +₹
 {(
-(item.qty * item.selling_price * 0.12)
+  ((item.qty * item.selling_price) -
+  ((item.qty * item.selling_price) * (item.discountPercent || 0) / 100)) * 0.12
 ).toFixed(2)}
 Tax
 </small>
@@ -849,21 +800,23 @@ onClick={() => increaseQty(item.id)}
 
 <input
 type="number"
-placeholder="Disc"
-value={item.discount || 0}
+placeholder="Disc%"
+value={item.discountPercent || 0}
 onChange={(e)=>
 setCart(
 cart.map(p=>
 p.id===item.id
 ?{
 ...p,
-discount:Number(e.target.value)
+discountPercent:Math.min(100, Math.max(0, Number(e.target.value)))
 }
 :p
 )
 )
 }
 className="discount-input"
+min="0"
+max="100"
 />
 
 <button
@@ -939,18 +892,30 @@ removeItem(item.id)
 <div className="summary">
 
   <div className="summary-row">
-    <span>Subtotal</span>
+    <span>Subtotal (Taxable)</span>
     <span>₹{subtotal.toFixed(2)}</span>
   </div>
 
+  {discountAmount > 0 && (
+    <div className="summary-row">
+      <span>Discount Applied</span>
+      <span style={{ color: "#22c55e" }}>-₹{discountAmount.toFixed(2)}</span>
+    </div>
+  )}
+
   <div className="summary-row">
-    <span>GST</span>
-    <span>₹{gstAmount.toFixed(2)}</span>
+    <span>CGST (6%)</span>
+    <span>₹{cgstAmount.toFixed(2)}</span>
   </div>
 
   <div className="summary-row">
-    <span>Discount</span>
-    <span>-₹{discountAmount.toFixed(2)}</span>
+    <span>SGST (6%)</span>
+    <span>₹{sgstAmount.toFixed(2)}</span>
+  </div>
+
+  <div className="summary-row">
+    <span>Total CGST + SGST Tax</span>
+    <span>₹{totalTaxAmount.toFixed(2)}</span>
   </div>
 
   <hr />
@@ -1013,7 +978,20 @@ removeItem(item.id)
     </section>
   </div>
 )}
-     {showCheckout && (
+      {showStaffAccess && (
+  <div className="scanner-backdrop" role="dialog" aria-modal="true" aria-label="Staff access verification">
+    <form className="scanner-modal" onSubmit={changeStaff}>
+      <button className="scanner-close" type="button" aria-label="Close staff verification" onClick={() => setShowStaffAccess(false)}><FaTimes /></button>
+      <h2>Change Staff</h2>
+      <p>Enter the new staff member's email and password to continue.</p>
+      <input type="email" placeholder="Staff email" value={staffEmail} onChange={(event) => setStaffEmail(event.target.value)} required style={{ width: "100%", padding: "12px", marginBottom: "10px" }} />
+      <input type="password" placeholder="Staff password" value={staffPassword} onChange={(event) => setStaffPassword(event.target.value)} required style={{ width: "100%", padding: "12px", marginBottom: "10px" }} />
+      {staffAccessError && <p style={{ color: "#fca5a5" }}>{staffAccessError}</p>}
+      <button className="scanner-cancel" type="submit" disabled={isVerifyingStaff}>{isVerifyingStaff ? "Verifying..." : "Verify & Change Staff"}</button>
+    </form>
+  </div>
+)}
+      {showCheckout && (
   <div
     style={{
       position: "fixed",
@@ -1041,50 +1019,6 @@ removeItem(item.id)
       >
         Complete Checkout
       </h2>
-
-      <label>Customer</label>
-
-      <select
-        value={selectedCustomer}
-        onChange={(e) =>
-          setSelectedCustomer(e.target.value)
-        }
-        style={{
-          width: "100%",
-          padding: "12px",
-          marginBottom: "15px"
-        }}
-      >
-        <option value="">
-          Walk-in Customer
-        </option>
-
-        {customers.map((customer) => (
-          <option
-            key={customer.id}
-            value={customer.id}
-          >
-            {customer.customer_name}
-          </option>
-        ))}
-      </select>
-
-      <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
-        <input
-          type="text"
-          placeholder="Customer Name (optional)"
-          value={customerNameInput}
-          onChange={(e) => setCustomerNameInput(e.target.value)}
-          style={{ flex: 2, padding: "8px" }}
-        />
-        <input
-          type="text"
-          placeholder="Phone (optional)"
-          value={customerPhoneInput}
-          onChange={(e) => setCustomerPhoneInput(e.target.value)}
-          style={{ flex: 1, padding: "8px" }}
-        />
-      </div>
 
       <label>Payment Mode</label>
 
@@ -1181,7 +1115,6 @@ removeItem(item.id)
         <button
           onClick={() => {
             setShowCheckout(false);
-            setSelectedCustomer("");
             setCashReceived("");
           }}
           style={{
@@ -1224,13 +1157,20 @@ removeItem(item.id)
           <p>GSTIN: {invoiceData.store.gstin || "N/A"} | Ph: {invoiceData.store.contactNumber || "N/A"}</p>
         </header>
         <div className="receipt-rule" />
-        <p><b>Invoice:</b> {invoiceData.invoiceNo}<br /><b>Date:</b> {new Date(invoiceData.date).toLocaleString("en-IN")}<br /><b>Customer:</b> {invoiceData.customer}{invoiceData.mobile ? ` (${invoiceData.mobile})` : ""}<br /><b>Payment:</b> {invoiceData.payment}</p>
+        <p><b>Invoice:</b> {invoiceData.invoiceNo}<br /><b>Date:</b> {new Date(invoiceData.date).toLocaleString("en-IN")}<br /><b>Staff:</b> {invoiceData.staff}<br /><b>Payment:</b> {invoiceData.payment}</p>
         <div className="receipt-rule" />
-        <table><thead><tr><th>Item Description</th><th>Qty/Price</th><th>Total (&#8377;)</th></tr></thead><tbody>{invoiceData.items.map((item) => <tr key={item.id}><td><b>{item.name}</b><small>Size: {item.size || "Free Size"} | Color: {item.color || "N/A"} | GST {item.gst_rate || 12}%</small></td><td>{item.qty} x {Number(item.selling_price).toFixed(0)}</td><td>{((item.qty * Number(item.selling_price) - Number(item.discount || 0)) * 1.12).toFixed(2)}</td></tr>)}</tbody></table>
+        <table><thead><tr><th>Item Description</th><th>Qty/Price</th><th>Total (&#8377;)</th></tr></thead><tbody>{invoiceData.items.map((item) => {
+          const itemSubtotal = item.qty * Number(item.selling_price);
+          const discountAmt = (itemSubtotal * Number(item.discountPercent || 0)) / 100;
+          const taxable = itemSubtotal - discountAmt;
+          return <tr key={item.id}><td><b>{item.name}</b><small>Size: {item.size || "Free Size"} | Color: {item.color || "N/A"} | GST {item.gst_rate || 12}%</small></td><td>{item.qty} x {Number(item.selling_price).toFixed(0)}</td><td>{(taxable * 1.12).toFixed(2)}</td></tr>;
+        })}</tbody></table>
         <div className="receipt-rule" />
         <div className="receipt-total-row"><span>Subtotal (Taxable)</span><span>&#8377;{invoiceData.subtotal.toFixed(2)}</span></div>
-        {invoiceData.discountAmount > 0 && <div className="receipt-total-row"><span>Discount</span><span>-&#8377;{invoiceData.discountAmount.toFixed(2)}</span></div>}
-        <div className="receipt-total-row"><span>GST Amount</span><span>&#8377;{invoiceData.gst.toFixed(2)}</span></div>
+        {invoiceData.discountAmount > 0 && <div className="receipt-total-row"><span>Discount Applied</span><span style={{ color: "#22c55e" }}>-&#8377;{invoiceData.discountAmount.toFixed(2)}</span></div>}
+        <div className="receipt-total-row"><span>CGST (6%)</span><span>&#8377;{invoiceData.cgst.toFixed(2)}</span></div>
+        <div className="receipt-total-row"><span>SGST (6%)</span><span>&#8377;{invoiceData.sgst.toFixed(2)}</span></div>
+        <div className="receipt-total-row"><span>Total CGST + SGST Tax</span><span>&#8377;{invoiceData.gst.toFixed(2)}</span></div>
         <div className="receipt-grand-total"><span>GRAND TOTAL ({invoiceData.payment})</span><span>&#8377;{invoiceData.total.toFixed(2)}</span></div>
         <div className="receipt-rule" /><p className="receipt-thanks">*** THANK YOU! VISIT AGAIN ***</p>
       </div>
